@@ -147,20 +147,23 @@ function Mount-EitVHD {
             the path to the vhdx file
 
         .OUTPUTS
-			Success        : True
-			Message        : VHD $VHDPath successfully mounted
-			DriveLetter : a drive letter
+			Success        	: True
+			Message     	: VHD $VHDPath successfully mounted
+			DriveLetter 	: a drive letter
+			DiskNumber 		: the disknumer
 
 
         .EXAMPLE
             Mount-EitVHD -VHDPath MyVDH.vhdx
            
         .NOTES  
-            Copyright: (c)2020 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-            Version		:	1.0
+            Copyright: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+            Version		:	1.1
             
             History:
                 V1.0 - 10.08.2020 - M.Trojahn - Initial creation
+				V1.0 - 23.04.2021 - M.Trojahn - Add disknumber 
+				
     #>	
     Param(
         [Parameter(Mandatory=$True)] [string] $VHDPath
@@ -195,6 +198,6 @@ function Mount-EitVHD {
     finally {
          
     }
-    $ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;DriveLetter=$DriveLetter})
+    $ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;DriveLetter=$DriveLetter;DiskNumber=$MyDisk.DiskNumber})
     return $ReturnObject
 }
