@@ -1,8 +1,8 @@
 #
 # ScriptFunctions.ps1
 # ===========================================================================
-# (c)2020 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.5
+# (c)2021 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
+# Version 1.6
 #
 # Useful Script functions
 # History:
@@ -12,6 +12,7 @@
 #   V1.3 - 21.10.2019 - M.Trojahn - Add New-EitFileLogger
 #	V1.4 - 16.03.2020 - M.Trojahn - Remove function test-port
 #	V1.5 - 14.12.2020 - M.Trojahn - Move New-EitFileLogger to newly created LogFunctions.ps1
+#	V1.6 - 28.14.2021 - M.Trojahn - Add Test-EitIsDriveWritable, Get-EitFirstWritableDrive & Get-EitLastWritableDrive
 #	
 # ===========================================================================
 
@@ -86,7 +87,7 @@ function Test-EitPort {
 			Tests if a port is reachable
 		
 		.Parameter ComputerName
-			the coumputer to test
+			the computer to test
 			
 		.Parameter Port
 			the port to test
@@ -98,12 +99,12 @@ function Test-EitPort {
 			Test-EitPort -ComputerName MyServer -Port MyPort
 		
 		.NOTES  
-		Copyright: (c)2018 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-		Version		:	1.1
-		
-		History:
-			V1.0 - 01.09.2016 - M.Trojahn - Initial creation
-			V1.1 - 08.01.2018 - M.Trojahn - Add default timeout of 10ms
+			Copyright: (c)2018 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.1
+			
+			History:
+				V1.0 - 01.09.2016 - M.Trojahn - Initial creation
+				V1.1 - 08.01.2018 - M.Trojahn - Add default timeout of 10ms
 #>	
 
 
@@ -275,3 +276,102 @@ function Get-EitScriptDirectory {
 		$PSScriptRoot 
 	}
 }
+
+function Test-EitIsDriveWritable {
+<#
+	.Synopsis
+			Test if a drive ist writable
+		.Description
+			Test if a drive ist writable
+		
+		.Parameter DriveName
+			the drive to test
+			
+		.EXAMPLE
+			Test-EitIsDriveWritable -DriveName D
+		
+		.NOTES  
+		Copyright: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+		Version		:	1.0
+		
+		History:
+			V1.0 - 28.04.2021 - M.Trojahn - Initial creation
+			
+#>	
+    param(
+		[parameter(Mandatory = $true)][string]$DriveName
+	)
+	try {
+        $MyDrive = Get-PSDrive $DriveName -ErrorAction SilentlyContinue
+        if ($MyDrive) {
+            $test_tmp_filename = "writetest-"+[guid]::NewGuid()
+            $test_filename = (Join-Path $MyDrive.root $test_tmp_filename)
+            [io.file]::OpenWrite($test_filename).close()
+            return $true
+        }
+        else {
+            throw "drive $DriveName does not exists!"
+        }
+    }    
+    catch	{
+        return $false
+
+    }
+}	
+
+
+function Get-EitLastWritableDrive {
+<#
+	.Synopsis
+			Get the last writable drive
+    .Description
+        Get the last writable drive
+            
+    .EXAMPLE
+        Get-EitLastWritableDrive
+    
+    .NOTES  
+        Copyright: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+        Version		:	1.0
+        
+        History:
+            V1.0 - 28.04.2021 - M.Trojahn - Initial creation
+        
+#>	
+    $MyDrives = Get-PSDrive -PSProvider FileSystem
+    foreach ($Drive in $MyDrives.Name | Sort-Object -Descending) {
+        if (Test-EitIsDriveWritable $Drive) {
+            return $Drive
+            break
+        }    
+    }    
+}	
+
+
+function Get-EitFirstWritableDrive {
+<#
+	.Synopsis
+			Get the first writable drive
+    .Description
+        Get the first writable drive
+            
+    .EXAMPLE
+        Get-EitFirstWritableDrive
+    
+    .NOTES  
+        Copyright: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+        Version		:	1.0
+        
+        History:
+            V1.0 - 28.04.2021 - M.Trojahn - Initial creation
+        
+#>	
+    $MyDrives = Get-PSDrive -PSProvider FileSystem
+    foreach ($Drive in $MyDrives.Name | Sort-Object) {
+        if (Test-EitIsDriveWritable $Drive) {
+            return $Drive
+            break
+        }    
+    }    
+}	
+
