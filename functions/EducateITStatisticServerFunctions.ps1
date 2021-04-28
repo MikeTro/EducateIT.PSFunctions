@@ -95,7 +95,7 @@ function Write-EitStatisticServerEntry {
             Version		:	1.0
 
             History:
-                V1.0 -01.04.2021 - M.Trojahn - Initial creation   
+                V1.0 - 01.04.2021 - M.Trojahn - Initial creation   
 				
 #>
 
