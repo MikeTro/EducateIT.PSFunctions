@@ -60,10 +60,6 @@ function Test-EITFileIsLocked {
 	return $FileIsLocked
 }
 
-
-
-
-
 function Resize-EitVHD {
     <#
     .SYNOPSIS
@@ -213,6 +209,6 @@ function Mount-EitVHD {
     finally {
          
     }
-    $ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;DriveLetter=$DriveLetter;DiskNumber=$MyDisk.DiskNumber};VHDPath=$VHDPath)
+    $ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;DriveLetter=$DriveLetter;DiskNumber=$MyDisk.DiskNumber;VHDPath=$VHDPath})
     return $ReturnObject
 }
