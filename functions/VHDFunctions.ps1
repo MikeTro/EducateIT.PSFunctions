@@ -1,15 +1,16 @@
 #
 # VHDFunctions.ps1
 # ===========================================================================
-# (c)2020 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.0
+# (c)2021 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
+# Version 1.2
 #
 # VDH Functions for Raptor Scripts
 #
 # History:
 #   V1.0 - 01.06.2020 - M.Trojahn - Initial creation
 #                                       Test-EITFileIsLocked, Resize-EitVHD
-#   V1.0 - 31.08.2020 - M.Trojahn -  Mount-EitVHD
+#   V1.1 - 31.08.2020 - M.Trojahn - Mount-EitVHD
+#   V1.2 - 03.05.2021 - M.Trojahn - Supress error message in Test-EITFileIsLocked
 
 function Test-EITFileIsLocked {
     <#
@@ -23,27 +24,39 @@ function Test-EITFileIsLocked {
         Test-EITFileIsLocked -Path MyVDH.vhdx
 		
 	.NOTES  
-		Copyright: (c)2020 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-		Version		:	1.0
+		Copyright: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+		Version		:	1.1
 		
 		History:
             V1.0 - 01.06.2020 - M.Trojahn - Initial creation
+			V1.1 - 03.05.2021 - M.Trojahn - Supress error message
     #>
     param (
         [parameter(Mandatory = $true)]
         [string]$Path
     )
+	$FileIsLocked = $false
+	$originalEAP = $ErrorActionPreference;
+    $ErrorActionPreference = "ignore"
     $oFile = New-Object System.IO.FileInfo $Path
-
-    $oStream = $oFile.Open([System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
-  
+	
+	try {
+		$oStream = $oFile.Open([System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+		
+	} 
+	catch {
+		$FileIsLocked = $true
+	}
+	$ErrorActionPreference = $originalEAP
     if ($oStream) {
-        $false    
         $oStream.Close()
+		$FileIsLocked = $false
     }
-    Else {
-        $true
+    else {
+       $FileIsLocked = $true
     }
+	
+	return $FileIsLocked
 }
 
 
