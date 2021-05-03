@@ -2,7 +2,7 @@
 # VHDFunctions.ps1
 # ===========================================================================
 # (c)2021 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.2
+# Version 1.3
 #
 # VDH Functions for Raptor Scripts
 #
@@ -10,7 +10,8 @@
 #   V1.0 - 01.06.2020 - M.Trojahn - Initial creation
 #                                       Test-EITFileIsLocked, Resize-EitVHD
 #   V1.1 - 31.08.2020 - M.Trojahn - Mount-EitVHD
-#   V1.2 - 03.05.2021 - M.Trojahn - Supress error message in Test-EITFileIsLocked
+#   V1.2 - 24.04.2021 - M.Trojahn - Add more info to output in Mount-EitVHD
+#   V1.3 - 03.05.2021 - M.Trojahn - Supress error message in Test-EITFileIsLocked
 
 function Test-EITFileIsLocked {
     <#
@@ -164,7 +165,7 @@ function Mount-EitVHD {
 			Message     	: VHD $VHDPath successfully mounted
 			DriveLetter 	: a drive letter
 			DiskNumber 		: the disknumer
-
+			VHDPath			: the path to the vhd
 
         .EXAMPLE
             Mount-EitVHD -VHDPath MyVDH.vhdx
@@ -175,7 +176,8 @@ function Mount-EitVHD {
             
             History:
                 V1.0 - 10.08.2020 - M.Trojahn - Initial creation
-				V1.0 - 23.04.2021 - M.Trojahn - Add disknumber 
+				V1.1 - 23.04.2021 - M.Trojahn - Add disknumber 
+				V1.2 - 24.04.2021 - M.Trojahn - Add VHDPath to output
 				
     #>	
     Param(
@@ -211,6 +213,6 @@ function Mount-EitVHD {
     finally {
          
     }
-    $ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;DriveLetter=$DriveLetter;DiskNumber=$MyDisk.DiskNumber})
+    $ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;DriveLetter=$DriveLetter;DiskNumber=$MyDisk.DiskNumber};VHDPath=$VHDPath)
     return $ReturnObject
 }
