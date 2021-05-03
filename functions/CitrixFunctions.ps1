@@ -2,7 +2,7 @@
 # CitrixFunctions.ps1
 # ===========================================================================
 # (c)2021 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.8
+# Version 1.9
 #
 # Citrix Functions for Raptor Scripts
 #
@@ -17,6 +17,7 @@
 #									Restart-EitCitrixBrokerMachine, Suspend-EitCitrixBrokerMachine, Invoke-EitCitrixBrokerMachineShutdown
 #	V1.7 - 26.10.2020 - M.Trojahn - Invoke-EitUserSessionLogoff, Stop-BrokerSession
 #	V1.8 - 08.03.2021 - M.Trojahn - Use -MaxRecordCount 10000 in function Get-EitFarmServers 
+#	V1.9 - 03.05.2021 - M.Trojahn - Don't stop in Invoke-EitUserSessionsLogoff if a broker is not reachable
 
 
 function Get-EitFarmServers {
@@ -2027,12 +2028,13 @@ function Invoke-EitUserSessionsLogoff {
 			
 		
 	.NOTES  
-		Copyright: (c)2019 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-		Version		:	1.0
+		Copyright: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+		Version		:	1.2
 		
 		History:
             V1.0 - 01.03.2019 - M.Trojahn - Initial creation
 			V1.1 - 26.10.2020 - M.Trojahn - Rename from Logoff-EitUserSesseions to Invoke-EitUserSessionLogoff
+			V1.2 - 03.05.2021 - M.Trojahn - Don't stop if a server is DDC not reachable
  #>	
 Param (	
 	[Parameter(Mandatory=$true)]  [string[]]$FarmEntryPoints,
@@ -2051,13 +2053,13 @@ Param (
 		if (Test-Path $DSNfile) { $FarmType = "XenApp" }
 		foreach ($item in $FarmEntryPoints) {
 			if (Test-EitPort -server $item -port 5985 -timeout "1000") {
-				$Session = New-PSSession -ComputerName $item -ErrorAction stop 
-				$DSNCheck = Invoke-Command -Session $Session -ScriptBlock {Test-Path $args[0]} -ArgumentList $DSNfile
+				$PSSession = New-PSSession -ComputerName $item -ErrorAction stop 
+				$DSNCheck = Invoke-Command -Session $PSSession -ScriptBlock {Test-Path $args[0]} -ArgumentList $DSNfile
 				If ($DSNCheck -eq $true) { $FarmType = "XenApp" }
 				if ($FarmType -eq "XenApp") {
-					Invoke-Command -Session $Session -ScriptBlock {Add-PSSnapin citrix.xenapp.commands} -ErrorAction stop
-					$XASessions = Invoke-Command -Session $Session -ScriptBlock {Get-XASession -Farm | select accountname, servername}
-					Remove-PSSession -Session $Session
+					Invoke-Command -Session $PSSession -ScriptBlock {Add-PSSnapin citrix.xenapp.commands} -ErrorAction stop
+					$XASessions = Invoke-Command -Session $PSSession -ScriptBlock {Get-XASession -Farm | select accountname, servername}
+					Remove-PSSession -Session $PSSession
 					foreach ($XASession in $XASessions) {
 						#$SessionList += (Make-EITSessionDataData -UserName $XASession.AccountName -ServerName $XASession.ServerName)
 					}
@@ -2066,16 +2068,19 @@ Param (
 					$bSuccess = $true
 				}
 				else {
-					Invoke-Command -Session $Session -ScriptBlock {Add-PSSnapin citrix*} -ErrorAction stop
-					$rc = Invoke-Command -Session $Session -ScriptBlock {param($Username) Get-BrokerSession -MaxRecordCount 100000 | Where {$_.UserName -eq $Username} | Stop-BrokerSession} -ArgumentList $UserName
-					$rc
-					Remove-PSSession -Session $Session
+					Invoke-Command -Session $PSSession -ScriptBlock {Add-PSSnapin citrix*} -ErrorAction stop
+					$BrokerSessions = Invoke-Command -Session $PSSession -ScriptBlock {param($Username) Get-BrokerSession -MaxRecordCount 100000 | Where {$_.UserName -eq $Username}} -ArgumentList $UserName
+					foreach ($BrokerSession in $BrokerSessions) {
+						Write-Host "Stopping session $($BrokerSession.SessionKey) from Server $($BrokerSession.MachineName)..."
+						Invoke-Command -Session $PSSession -ScriptBlock {param($BrokerSession) Stop-BrokerSession $BrokerSession } -ArgumentList $BrokerSession
+					}
+					Remove-PSSession -Session $PSSession
 					$StatusMessage = "Successfully logged of sessions..."
 					$bSuccess = $true
 				}
 			}
 			else {
-				throw "Server $item is not reachable"
+				Write-Host "Server $item is not reachable"
 			}
 		}
 	}
