@@ -193,53 +193,83 @@ function Mount-EitVHD {
             Mount-EitVHD -VHDPath MyVDH.vhdx -ReadOnly
            
         .NOTES  
-            Copyright: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-            Version		:	1.3
+            Copyright	: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+            Version		:	1.4
+			Credits to https://github.com/FSLogix/Invoke-FslShrinkDisk/
             
             History:
                 V1.0 - 10.08.2020 - M.Trojahn - Initial creation
 				V1.1 - 23.04.2021 - M.Trojahn - Add disknumber 
 				V1.2 - 24.04.2021 - M.Trojahn - Add VHDPath to output
 				V1.3 - 05.05.2021 - M.Trojahn - Add parameter LockFilePath and LockFile generation
+				V1.4 - 25.05.2021 - M.Trojahn - Add TimeOut paramtere, waiting for mount (see credits)
 				
     #>	
     Param(
         [Parameter(Mandatory=$True)] [string] $VHDPath,
 		[Parameter(Mandatory=$False)] [string] $LockFilePath=($env:EducateITFiles + "\" + "VHDLockFiles"),
+		[Parameter(Mandatory=$False)] [int] $TimeOut = 30,
 		[Parameter(Mandatory=$False)] [switch] $ReadOnly
     )
+	
     Try {
 		if (!(Test-Path -Path $LockFilePath)) {New-Item -Path $LockFilePath -ItemType Directory}
         $bSuccess = $True
         $StatusMessage = "VHD $VHDPath successfully mounted"
-        if ((Test-EitFileIsLocked -Path $VHDPath -ErrorAction SilentlyContinue) -eq $false) {
-			if ($ReadOnly) {
-				# Mount-VHD -ReadOnly 
-				$MyDisk = (Mount-VHD -Path $VHDPath -ReadOnly -PassThru -ErrorAction Stop | Get-Disk) 
+		if (Test-Path -Path $VHDPath) {
+			if ((Test-EitFileIsLocked -Path $VHDPath -ErrorAction SilentlyContinue) -eq $false) {
+				if ($ReadOnly) {
+					# Mount-VHD -ReadOnly 
+					$MyMount = (Mount-VHD -Path $VHDPath -ReadOnly -PassThru -ErrorAction Stop ) 
+				}
+				else {
+					$MyMount = (Mount-VHD -Path $VHDPath -PassThru -ErrorAction Stop) 
+				}
+				
+				$MyDiskNumber = $null
+				$TimeSpan = (Get-Date).AddSeconds($TimeOut)
+				while ($MyDiskNumber -eq $null -and $timespan -gt (Get-Date)) {
+					Start-Sleep 0.1
+					try {
+						$MyVHD = Get-VHD -Path $VHDPath
+						if ($MyVHD.Number) {
+							$MyDiskNumber = $MyVHD.Number
+						}
+					}
+					catch {
+						$MyDiskNumber = $null
+					}
+				}
+				if ($MyDiskNumber -eq $null) {
+					throw "Timeout reached, while getting mount information"
+				return
+				}
+				
+				$MyDisk = Get-Disk -Number $MyDiskNumber
+				$MyPartition = Get-Partition -DiskNumber $MyDisk.Number
+				$MyVolume = Get-Volume -Partition $MyPartition
+				
+				if ($MyVolume.DriveLetter -eq $null)  {
+					$DriveLetter =  Get-EitNextFreeDrive
+					Set-Partition -DiskNumber $MyDisk.DiskNumber -PartitionNumber $MyPartition.PartitionNumber -NewDriveLetter $DriveLetter.Substring(0,1)
+				}
+				else {
+					$DriveLetter = ($MyVolume.DriveLetter + ":")
+				}
+				
+				$MountInfo = ([pscustomobject]@{DateTime=Get-Date;DriveLetter=$DriveLetter;DiskNumber=$MyDisk.DiskNumber;VHDPath=$VHDPath;ReadOnly=$ReadOnly}) 
+				#Create lock file
+				$LockFileName = ("Disk" + $MountInfo.DiskNumber + ".lck")
+				$MountInfo | Export-Clixml -Path ($LockFilePath + "\" + $LockFileName)
+				
 			}
 			else {
-				$MyDisk = (Mount-VHD -Path $VHDPath -PassThru -ErrorAction Stop | Get-Disk) 
-			}	
-            $MyPartition = Get-Partition -DiskNumber $MyDisk.Number
-            $MyVolume = Get-Volume -Partition $MyPartition
-            
-            if ($MyVolume.DriveLetter -eq $null)  {
-                $DriveLetter =  Get-EitNextFreeDrive
-                Set-Partition -DiskNumber $MyDisk.DiskNumber -PartitionNumber $MyPartition.PartitionNumber -NewDriveLetter $DriveLetter.Substring(0,1)
-            }
-            else {
-                $DriveLetter = ($MyVolume.DriveLetter + ":")
-            }
-			
-			$MountInfo = ([pscustomobject]@{DateTime=Get-Date;DriveLetter=$DriveLetter;DiskNumber=$MyDisk.DiskNumber;VHDPath=$VHDPath;ReadOnly=$ReadOnly}) 
-			#Create lock file
-			$LockFileName = ("Disk" + $MountInfo.DiskNumber + ".lck")
-			$MountInfo | Export-Clixml -Path ($LockFilePath + "\" + $LockFileName)
-			
-        }
-        else {
-            throw "Access denied on $VHDPath."            
-        }   
+				throw "Access denied on $VHDPath!"            
+			}  
+		}
+		else {
+			throw "VHD $VHDPath does not exists!"            
+		}  		
     }
     catch {
         $bSuccess = $false
@@ -274,27 +304,54 @@ function Dismount-EitVHD {
         .EXAMPLE
             Dismount-EitVHD -DiskNumber 1
 			
-        .NOTES  
-            Copyright: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-            Version		:	1.0
+        .NOTES 
+            Copyright	: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+            Version		:	1.1
+			Credits to https://github.com/FSLogix/Invoke-FslShrinkDisk/
             
             History:
                 V1.0 - 05.05.2021 - M.Trojahn - Initial creation
+				V1.1 - 25.05.2021 - M.Trojahn - Add TimeOut param, testing if disk realy dismounted
 				
 				
     #>	
     Param(
         [Parameter(Mandatory=$True)] [int] $Disknumber,
+		[Parameter(Mandatory=$False)] [int] $TimeOut = 30,
 		[Parameter(Mandatory=$False)] [string] $LockFilePath=($env:EducateITFiles + "\" + "VHDLockFiles")
     )
-    Try {
+    try {
         $bSuccess = $True
 		$StatusMessage = "Disk $DiskNumber successfully dismounted"
 		$LockFileName = ("Disk" + $DiskNumber + ".lck")
-		Dismount-VHD -DiskNumber $DiskNumber -ErrorAction Stop
-		if (Test-Path -Path ($LockFilePath + "\" + $LockFileName)) {  
-			Remove-Item ($LockFilePath + "\" + $LockFileName)
+		$timeStampDismount = (Get-Date).AddSeconds($TimeOut)
+        while ((Get-Date) -lt $timeStampDismount -and $mountRemoved -ne $true) {
+			try {
+				Dismount-VHD -DiskNumber $DiskNumber -ErrorAction Stop | Out-Null
+				#double/triple check disk is dismounted due to disk manager service being a pain.
+
+				try {
+					$MyVHD = Get-VHD -DiskNumber $DiskNumber -ErrorAction Stop
+
+					switch ($MyVHD.Attached) {
+						$null { $mountRemoved = $false ; Start-Sleep 0.1; break }
+						$true { $mountRemoved = $false ; break}
+						$false { $mountRemoved = $true ; break }
+						Default { $mountRemoved = $false }
+					}
+				}
+				catch {
+					$mountRemoved = $false
+				}
+			}
+			catch {
+				$mountRemoved = $false
+			}
+		}	
+		if ($mountRemoved -ne $true) {
+			throw "Failed to dismount disknumber $DiskNumber"
 		}
+		
     }
     catch {
         $bSuccess = $false
@@ -306,3 +363,75 @@ function Dismount-EitVHD {
     }
     return $ReturnObject
 }
+
+
+
+function New-EitVHD { 
+    <#
+     .SYNOPSIS
+            Create a new VHD, create partition, initalize and format it
+        .DESCRIPTION
+           Create a new VHD, create partition, initalize and format it
+        
+		.PARAMETER SizeBytes
+            the size in bytes, 1 MB, 1 GB
+			
+		.PARAMETER VHDPath
+            the path to the vhdx file
+			
+        .OUTPUTS
+			Success        	: True
+			Message     	: VHD $VHDPath successfully created
+			
+
+        .EXAMPLE
+           New-EitVHD -VHDPath MyVDH.vhdx -SizeBytes 1GB
+			
+        .NOTES  
+            Copyright: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+            Version		:	1.0
+            
+            History:
+                V1.0 - 25.05.2021 - M.Trojahn - Initial creation
+				
+				
+    #>	
+    Param(
+        [Parameter(Mandatory=$True)] [string] $VHDPath,
+		[Parameter(Mandatory=$True)] [int] $SizeBytes
+
+    )
+    try {
+        $bSuccess = $True
+		$StatusMessage = "Disk $VHDPath successfully created"
+		if (!(Test-Path -Path $VHDPath)) {
+			$MyVHD = New-VHD -Path $VHDPath -Dynamic -SizeBytes $SizeBytes -ErrorAction Stop
+			$MyMount = Mount-VHD $VHDPath -Passthru -ErrorAction Stop 
+			$MyPartition = $null
+			$MyPartition = Get-Partition -DiskNumber $MyMount.Number -ErrorAction SilentlyContinue
+			if ($MyPartition -eq $null) {
+				$MyInit = Initialize-Disk -Number $MyMount.Number -Passthru -ErrorAction Stop  
+				$MyPartition = New-Partition -DiskNumber $MyMount.Number -UseMaximumSize -ErrorAction Stop 		
+				$MyFormat = Format-Volume -Partition $MyPartition -FileSystem NTFS -Confirm:$false -Force -ErrorAction Stop 
+			}  
+		}
+		else {
+			throw "VHD $VHDPath already exists!"            
+		}  
+		
+    }
+    catch {
+        $bSuccess = $false
+        $StatusMessage = $_.Exception.Message
+        
+    }
+    finally {
+		$MyVHDTst = Get-VHD -Path $VHDPath
+		if ($MyVHDTst.Attached) {
+			Dismount-VHD -Path $VHDPath
+		}	
+        $ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;}) 
+    }
+    return $ReturnObject
+}
+
