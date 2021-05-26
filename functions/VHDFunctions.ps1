@@ -2,19 +2,20 @@
 # VHDFunctions.ps1
 # ===========================================================================
 # (c)2021 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.4
+# Version 1.5
 #
 # VDH Functions for Raptor Scripts
 #
 # History:
 #   V1.0 - 01.06.2020 - M.Trojahn - Initial creation
-#                                       Test-EITFileIsLocked, Resize-EitVHD
+#                                   Test-EITFileIsLocked, Resize-EitVHD
 #   V1.1 - 31.08.2020 - M.Trojahn - Mount-EitVHD
 #   V1.2 - 24.04.2021 - M.Trojahn - Add more info to output in Mount-EitVHD
 #   V1.3 - 03.05.2021 - M.Trojahn - Supress error message in Test-EITFileIsLocked
 #   V1.4 - 05.05.2021 - M.Trojahn - Add parameter LockFilePath in Mount-EitVHD
 #									Add function Dismount-EitVHD
 #									Use Mount-EitVHD & Dismount-EitVHD in Resize-EitVHD
+#   V1.5 - 05.05.2021 - M.Trojahn - Add New-EitVHD, add NoDriveLetter parameter to function Mount-EitVHD and in function Resize-EitVHD
 
 function Test-EITFileIsLocked {
     <#
@@ -89,11 +90,12 @@ function Resize-EitVHD {
 		
 	.NOTES  
 		Copyright: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-		Version		:	1.1
+		Version		:	1.2
 		
 		History:
             V1.0 - 01.06.2020 - M.Trojahn - Initial creation
-			V1.0 - 05.05.2021 - M.Trojahn - Use Mount-EitVHD & Dismount-EitVHD 
+			V1.1 - 05.05.2021 - M.Trojahn - Use Mount-EitVHD & Dismount-EitVHD 
+			V1.2 - 26.05.2021 - M.Trojahn - Use NoDriveLetter parameter
 			
     #>	
 	Param(
@@ -113,10 +115,10 @@ function Resize-EitVHD {
 			
 			if ($Shrink) {
 				# Mount ReadOnly 
-				$Mount = Mount-EitVHD -VHDPath $VHDPath -ReadOnly
+				$Mount = Mount-EitVHD -VHDPath $VHDPath -ReadOnly -NoDriveLetter
 			}
 			else {
-				$Mount = Mount-EitVHD -VHDPath $VHDPath
+				$Mount = Mount-EitVHD -VHDPath $VHDPath -NoDriveLetter
 			}	
 			if ($Mount.Success -eq $True) {
 				$MyVolume = Get-Disk -DeviceId $Mount.DiskNumber | Get-Partition | Get-Volume	
@@ -176,6 +178,10 @@ function Mount-EitVHD {
 			Mount the disk read only.
 			Use this paramater for optimizing the disk
 			
+		.PARAMETER NoDriveLetter
+			Mount the disk without drive letter.
+			optimizing or reszing does not require a driveletter
+			
 			
         .OUTPUTS
 			Success        	: True
@@ -191,10 +197,13 @@ function Mount-EitVHD {
 			
 		.EXAMPLE
             Mount-EitVHD -VHDPath MyVDH.vhdx -ReadOnly
+			
+		.EXAMPLE
+            Mount-EitVHD -VHDPath MyVDH.vhdx -NoDriveLetter
            
         .NOTES  
-            Copyright	: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-            Version		:	1.4
+            Copyright	:	(c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+            Version		:	1.5
 			Credits to https://github.com/FSLogix/Invoke-FslShrinkDisk/
             
             History:
@@ -202,13 +211,16 @@ function Mount-EitVHD {
 				V1.1 - 23.04.2021 - M.Trojahn - Add disknumber 
 				V1.2 - 24.04.2021 - M.Trojahn - Add VHDPath to output
 				V1.3 - 05.05.2021 - M.Trojahn - Add parameter LockFilePath and LockFile generation
-				V1.4 - 25.05.2021 - M.Trojahn - Add TimeOut paramtere, waiting for mount (see credits)
+				V1.4 - 20.05.2021 - M.Trojahn - Add TimeOut parameter, waiting for mount (see credits)
+				V1.5 - 26.05.2021 - M.Trojahn - Add NoDriveLetter parameter, Resize do not require a driveletter
+				
 				
     #>	
     Param(
         [Parameter(Mandatory=$True)] [string] $VHDPath,
 		[Parameter(Mandatory=$False)] [string] $LockFilePath=($env:EducateITFiles + "\" + "VHDLockFiles"),
 		[Parameter(Mandatory=$False)] [int] $TimeOut = 30,
+		[Parameter(Mandatory=$False)] [switch] $NoDriveLetter,
 		[Parameter(Mandatory=$False)] [switch] $ReadOnly
     )
 	
@@ -220,10 +232,20 @@ function Mount-EitVHD {
 			if ((Test-EitFileIsLocked -Path $VHDPath -ErrorAction SilentlyContinue) -eq $false) {
 				if ($ReadOnly) {
 					# Mount-VHD -ReadOnly 
-					$MyMount = (Mount-VHD -Path $VHDPath -ReadOnly -PassThru -ErrorAction Stop ) 
+					if ($NoDriveLetter) {
+						$MyMount = (Mount-VHD -Path $VHDPath -ReadOnly -NoDriveLetter -PassThru -ErrorAction Stop ) 
+					}
+					else {
+						$MyMount = (Mount-VHD -Path $VHDPath -ReadOnly -PassThru -ErrorAction Stop ) 
+					}
 				}
 				else {
-					$MyMount = (Mount-VHD -Path $VHDPath -PassThru -ErrorAction Stop) 
+					if ($NoDriveLetter) {
+						$MyMount = (Mount-VHD -Path $VHDPath -NoDriveLetter -PassThru -ErrorAction Stop ) 
+					}
+					else {
+						$MyMount = (Mount-VHD -Path $VHDPath -PassThru -ErrorAction Stop ) 
+					}
 				}
 				
 				$MyDiskNumber = $null
@@ -246,22 +268,36 @@ function Mount-EitVHD {
 				}
 				
 				$MyDisk = Get-Disk -Number $MyDiskNumber
-				$MyPartition = Get-Partition -DiskNumber $MyDisk.Number
-				$MyVolume = Get-Volume -Partition $MyPartition
-				
-				if ($MyVolume.DriveLetter -eq $null)  {
-					$DriveLetter =  Get-EitNextFreeDrive
-					Set-Partition -DiskNumber $MyDisk.DiskNumber -PartitionNumber $MyPartition.PartitionNumber -NewDriveLetter $DriveLetter.Substring(0,1)
+				if ($NoDriveLetter -eq $False) {
+					$MyPartition = $null
+				    $MyPartition = Get-Partition -DiskNumber $MyDisk.Number | Where-Object {$_.Type -ne "Reserved"} -ErrorAction SilentlyContinue
+					if ($MyPartition -ne $null) {
+						$MyVolume = Get-Volume -Partition $MyPartition
+						
+						if ($MyVolume.DriveLetter -eq $null)  {
+							$DriveLetter =  Get-EitNextFreeDrive
+							if (!(Test-EitDriveExists -DriveLetter $DriveLetter)) {
+								Set-Partition -DiskNumber $MyDisk.DiskNumber -PartitionNumber $MyPartition.PartitionNumber -NewDriveLetter $DriveLetter.Substring(0,1)
+							}	
+							else {
+								throw "No available driveletter found!"
+							}
+						}
+						else {
+							$DriveLetter = ($MyVolume.DriveLetter + ":")
+						}
+					}
+					else {
+						throw "No partition found on disk $VHDPath"
+					}
 				}
 				else {
-					$DriveLetter = ($MyVolume.DriveLetter + ":")
-				}
-				
+					$DriveLetter = "n/a"
+				}				
 				$MountInfo = ([pscustomobject]@{DateTime=Get-Date;DriveLetter=$DriveLetter;DiskNumber=$MyDisk.DiskNumber;VHDPath=$VHDPath;ReadOnly=$ReadOnly}) 
 				#Create lock file
 				$LockFileName = ("Disk" + $MountInfo.DiskNumber + ".lck")
 				$MountInfo | Export-Clixml -Path ($LockFilePath + "\" + $LockFileName)
-				
 			}
 			else {
 				throw "Access denied on $VHDPath!"            
@@ -312,8 +348,6 @@ function Dismount-EitVHD {
             History:
                 V1.0 - 05.05.2021 - M.Trojahn - Initial creation
 				V1.1 - 25.05.2021 - M.Trojahn - Add TimeOut param, testing if disk realy dismounted
-				
-				
     #>	
     Param(
         [Parameter(Mandatory=$True)] [int] $Disknumber,
@@ -324,34 +358,44 @@ function Dismount-EitVHD {
         $bSuccess = $True
 		$StatusMessage = "Disk $DiskNumber successfully dismounted"
 		$LockFileName = ("Disk" + $DiskNumber + ".lck")
-		$timeStampDismount = (Get-Date).AddSeconds($TimeOut)
-        while ((Get-Date) -lt $timeStampDismount -and $mountRemoved -ne $true) {
-			try {
-				Dismount-VHD -DiskNumber $DiskNumber -ErrorAction Stop | Out-Null
-				#double/triple check disk is dismounted due to disk manager service being a pain.
-
+		$MyVHD = Get-VHD -DiskNumber $DiskNumber -ErrorAction SilentlyContinue
+		if ($MyVHD.Attached) {
+			$timeStampDismount = (Get-Date).AddSeconds($TimeOut)
+			while ((Get-Date) -lt $timeStampDismount -and $mountRemoved -ne $true) {
 				try {
-					$MyVHD = Get-VHD -DiskNumber $DiskNumber -ErrorAction Stop
+					Dismount-VHD -DiskNumber $DiskNumber -ErrorAction Stop | Out-Null
+					#double/triple check disk is dismounted due to disk manager service being a pain.
 
-					switch ($MyVHD.Attached) {
-						$null { $mountRemoved = $false ; Start-Sleep 0.1; break }
-						$true { $mountRemoved = $false ; break}
-						$false { $mountRemoved = $true ; break }
-						Default { $mountRemoved = $false }
+					try {
+						$MyVHD = Get-VHD -DiskNumber $DiskNumber -ErrorAction Stop
+
+						switch ($MyVHD.Attached) {
+							$null { $mountRemoved = $false ; Start-Sleep 0.1; break }
+							$true { $mountRemoved = $false ; break}
+							$false { $mountRemoved = $true ; break }
+							Default { $mountRemoved = $false }
+						}
+					}
+					catch {
+						$mountRemoved = $true
 					}
 				}
 				catch {
 					$mountRemoved = $false
 				}
+			}	
+			if ($mountRemoved -ne $true) {
+				throw "Failed to dismount disknumber $DiskNumber"
 			}
-			catch {
-				$mountRemoved = $false
+			else {
+				if (Test-Path -Path ($LockFilePath + "\" + $LockFileName)) {  
+					Remove-Item ($LockFilePath + "\" + $LockFileName)
+				}
 			}
-		}	
-		if ($mountRemoved -ne $true) {
-			throw "Failed to dismount disknumber $DiskNumber"
 		}
-		
+		else {
+			throw "Disk $DiskNumber is not mounted!"
+		}	
     }
     catch {
         $bSuccess = $false
@@ -394,12 +438,10 @@ function New-EitVHD {
             History:
                 V1.0 - 25.05.2021 - M.Trojahn - Initial creation
 				
-				
     #>	
     Param(
         [Parameter(Mandatory=$True)] [string] $VHDPath,
 		[Parameter(Mandatory=$True)] [int] $SizeBytes
-
     )
     try {
         $bSuccess = $True
@@ -418,12 +460,10 @@ function New-EitVHD {
 		else {
 			throw "VHD $VHDPath already exists!"            
 		}  
-		
     }
     catch {
         $bSuccess = $false
         $StatusMessage = $_.Exception.Message
-        
     }
     finally {
 		$MyVHDTst = Get-VHD -Path $VHDPath
