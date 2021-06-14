@@ -1,8 +1,8 @@
 #
 # ADFunctions.ps1
 # ===========================================================================
-# (c)2020 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.5
+# (c) 2021 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
+# Version 1.7
 #
 # AD Functions for Raptor Scripts
 #
@@ -16,13 +16,17 @@
 #   V1.4 - 31.03.2020 - M.Trojahn - Add Get-EitLapsPassword
 #   V1.5 - 08.12.2020 - M.Trojahn - Fix error in Get-EitGroupMembers
 #   V1.6 - 06.04.2021 - M.Trojahn - Get-EitBitLockerPassword
+#   V1.7 - 14.06.2021 - M.Trojahn - Error handling in Get-EitDirectoryEntry, Get-EitRDSProfilePath, Add-EitUser2Group, Remove-EitUserFromGroup, Get-EitGroupMembers
 
-function Get-EitDirectoryEntry { 
+
+
+function Get-EitDirectoryEntry
+{ 
 	<#
 		.Synopsis
-			Find Distinguished Name 
+			Find DirectoryEntry  
 		.Description
-			Find Distinguished Name 
+			Find DirectoryEntry
 		
 		.Parameter ADFindType
 			the ad find type (user / computer, group)
@@ -43,11 +47,12 @@ function Get-EitDirectoryEntry {
 
 
 		.NOTES  
-			Copyright: (c)2016 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Copyright: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.1
 			
 			History:
 				V1.0 - 03.02.2016 - M.Trojahn - Initial creation
+				V1.1 - 14.06.2021 - M.Trojahn - return false if object doesn't exists
 	#>	
 	Param(
 		[Parameter(Mandatory=$True)] [ValidateSet("user", "computer", "group")] [string] $ADFindType,
@@ -58,7 +63,8 @@ function Get-EitDirectoryEntry {
 	[boolean] 	$bSuccess = $true
 	[string] 	$StatusMessage = "Successfully get GetDirectoryEntry for $cName"
 	
-	try { 
+	try
+	{ 
 		# Create A New ADSI Call 
 		$root = [ADSI]'' 
 		# Create a New DirectorySearcher Object 
@@ -67,19 +73,33 @@ function Get-EitDirectoryEntry {
 		# Set the filter to search for a specific CNAME 
 		$searcher.filter = "(&(objectClass=$ADFindType) (CN=$cName))" 
 		# Set results in $adfind variable 
-		$adfind = $searcher.FindOne()  
+		$adfind = $null
+		$adfind = $searcher.FindOne()
+		if ($adfind -eq $null)
+		{
+			throw "$ADFindType $cName not found!"
+		}
 	}
 	
-	catch {
+	catch
+	{
 		$bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
 	
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;DirectoryEntry=$adfind.GetDirectoryEntry()})
+	if ($bSuccess -ne $false)
+	{
+		$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;DirectoryEntry=$adfind.GetDirectoryEntry()})
+	}
+	else
+	{
+		$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;DirectoryEntry="n/a"})
+	}
 	return $ReturnObject
 }
-	
-Function Get-EitRDSProfilePath{
+
+function Get-EitRDSProfilePath
+{
 	<#
 		.Synopsis
 			Get RDSProfilePath 
@@ -102,11 +122,13 @@ Function Get-EitRDSProfilePath{
 
 
 		.NOTES  
-			Copyright: (c)2016 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Copyright: (c) 2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.1
 			
 			History:
 				V1.0 - 03.02.2016 - M.Trojahn - Initial creation
+				V1.1 - 14.06.2021 - M.Trojahn - Error handling from Get-EitDirectoryEntry
+				
 	#>	
 	
 	Param(
@@ -117,24 +139,40 @@ Function Get-EitRDSProfilePath{
 	[boolean] 	$bSuccess = $true
 	[string] 	$StatusMessage = "Successfully get RDSProfilePath for $samAccountName"
 	
-	try {
+	try
+	{
 		$DirectoryEntry = Get-EitDirectoryEntry -ADFindType "User" -DNSDomain $DNSDomain -cName $samAccountName
-		$UserDN = $DirectoryEntry.DirectoryEntry.distinguishedName
-		$userSearch = [adsi]("LDAP://" + $UserDN)
-		$RDSProfilePath = $userSearch.psbase.InvokeGet("terminalservicesprofilepath")
+		if ($DirectoryEntry.Success -eq "True")
+		{
+			$UserDN = $DirectoryEntry.DirectoryEntry.distinguishedName
+			$userSearch = [adsi]("LDAP://" + $UserDN)
+			$RDSProfilePath = $userSearch.psbase.InvokeGet("terminalservicesprofilepath")
+		}
+		else
+		{
+			throw $DirectoryEntry.Message
+		}
 	}
 	
-	catch {
+	catch
+	{
 		$bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
 	
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;RDSProfilePath=$RDSProfilePath})
+	if ($bSuccess -ne $false)
+	{
+		$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;RDSProfilePath=$RDSProfilePath})
+	}
+	else
+	{	
+		$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;RDSProfilePath="n/a"})
+	}
 	return $ReturnObject
-		
 }
 
-Function Set-EitRDSProfilePath{
+function Set-EitRDSProfilePath
+{
 	<#
 		.Synopsis
 			Set RDSProfilePath 
@@ -183,14 +221,17 @@ Function Set-EitRDSProfilePath{
 	)
 	
 	[boolean] 	$bSuccess = $true
-	[string] 	$StatusMessage = "RDSProfilePath has successfully been set for MyUser $samAccountName"	
+	[string] 	$StatusMessage = "RDSProfilePath has successfully been set for MyUser $samAccountName"
 	
-	try {
-		if ($AdminUser -ne "") {
+	try
+	{
+		if ($AdminUser -ne "")
+		{
 			#Create an object "DirectoryEntry" and specify the domain, username and password
 			$DirectoryEntry = new-object DirectoryServices.DirectoryEntry(("LDAP://" + $DNSDomain),($DNSDomain + "\" + $AdminUser), $AdminPassword)
 		}
-		else {
+		else
+		{
 			$DirectoryEntry = new-object DirectoryServices.DirectoryEntry(("LDAP://" + $DNSDomain))
 		}
 		
@@ -205,7 +246,8 @@ Function Set-EitRDSProfilePath{
 	
 		$User.SetInfo() | Out-Null
 	}
-	catch {
+	catch
+	{
 		$bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
@@ -214,7 +256,8 @@ Function Set-EitRDSProfilePath{
 	return $ReturnObject
 }
 
-function Add-EitUser2Group {
+function Add-EitUser2Group
+{
 	<#
 		.Synopsis
 			Add user to a group 
@@ -248,11 +291,12 @@ function Add-EitUser2Group {
 
 
 		.NOTES  
-			Copyright: (c)2016 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Copyright: (c) 2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.1
 			
 			History:
 				V1.0 - 03.02.2016 - M.Trojahn - Initial creation
+				V1.1 - 14.06.2021 - M.Trojahn - Add error handling from Get-EitDirectoryEntry
 	#>
 	
 	Param(
@@ -266,14 +310,15 @@ function Add-EitUser2Group {
 	[boolean] 	$bSuccess = $true
 	[string] 	$StatusMessage = "User $UserName has successfully been added to the group $GroupName"
 	
-
-	try {
-		
-		if ($AdminUser -ne "") {
+	try
+	{
+		if ($AdminUser -ne "")
+		{
 			#Create an object "DirectoryEntry" and specify the domain, username and password
 			$DirectoryEntry = new-object DirectoryServices.DirectoryEntry(("LDAP://" + $DNSDomain),($DNSDomain + "\" + $AdminUser), $AdminPassword)
 		}
-		else {
+		else
+		{
 			$DirectoryEntry = new-object DirectoryServices.DirectoryEntry(("LDAP://" + $DNSDomain))
 		}
 			
@@ -286,29 +331,36 @@ function Add-EitUser2Group {
 		$MyGroup = $found.GetDirectoryEntry()
 
 		$DirectoryEntry = Get-EitDirectoryEntry -ADFindType "User" -DNSDomain $DNSDomain -cName $UserName
-		$UserDN = $DirectoryEntry.DirectoryEntry.distinguishedName
-		$MyUser = [adsi]("LDAP://" + $UserDN)
-		if (!(Is-EitGroupMember -ADObject $MyUser -GroupName $GroupName)) {
-			$myGroup.Add("LDAP://" + $UserDN) | Out-Null
+		if ($DirectoryEntry.Success -eq "True")
+		{
+			$UserDN = $DirectoryEntry.DirectoryEntry.distinguishedName
+			$MyUser = [adsi]("LDAP://" + $UserDN)
+			if (!(Is-EitGroupMember -ADObject $MyUser -GroupName $GroupName))
+			{
+				$myGroup.Add("LDAP://" + $UserDN) | Out-Null
+			}
+			else
+			{
+				throw "User $UserName is already member of the group $GroupName"
+			}
 		}
-		else {
-			throw "User $UserName is already member of the group $GroupName"
+		else
+		{
+			throw $DirectoryEntry.Message
 		}
-		
-		
 	}
-	catch {
+	catch
+	{
 		$bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
 	
 	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage})
 	return $ReturnObject
-	
-
 }
 
-function Remove-EitUserFromGroup {
+function Remove-EitUserFromGroup
+{
 	<#
 		.Synopsis
 			Remove user from a group 
@@ -343,11 +395,12 @@ function Remove-EitUserFromGroup {
 
 
 		.NOTES  
-			Copyright: (c)2016 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Copyright	: 	(c) 2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.1
 			
 			History:
 				V1.0 - 03.02.2016 - M.Trojahn - Initial creation
+				V1.1 - 14.06.2021 - M.Trojahn - error handling from Get-EitDirectoryEntry 
 	#>
 	
 	Param(
@@ -361,14 +414,15 @@ function Remove-EitUserFromGroup {
 	[boolean] 	$bSuccess = $true
 	[string] 	$StatusMessage = "User $UserName has successfully been removed from the group $GroupName"
 	
-
-	try {
-		
-		if ($AdminUser -ne "") {
+	try
+	{
+		if ($AdminUser -ne "")
+		{
 			#Create an object "DirectoryEntry" and specify the domain, username and password
 			$DirectoryEntry = new-object DirectoryServices.DirectoryEntry(("LDAP://" + $DNSDomain),($DNSDomain + "\" + $AdminUser), $AdminPassword)
 		}
-		else {
+		else
+		{
 			$DirectoryEntry = new-object DirectoryServices.DirectoryEntry(("LDAP://" + $DNSDomain))
 		}
 			
@@ -381,27 +435,36 @@ function Remove-EitUserFromGroup {
 		$MyGroup = $found.GetDirectoryEntry()
 
 		$DirectoryEntry = Get-EitDirectoryEntry -ADFindType "User" -DNSDomain $DNSDomain -cName $UserName
-		$UserDN = $DirectoryEntry.DirectoryEntry.distinguishedName
-		$MyUser = [adsi]("LDAP://" + $UserDN)
-		if (Is-EitGroupMember -ADObject $MyUser -GroupName $GroupName) {
-			$myGroup.Remove("LDAP://" + $UserDN) | Out-Null
+		if ($DirectoryEntry.Success -eq "True")
+		{
+			$UserDN = $DirectoryEntry.DirectoryEntry.distinguishedName
+			$MyUser = [adsi]("LDAP://" + $UserDN)
+			if (Is-EitGroupMember -ADObject $MyUser -GroupName $GroupName)
+			{
+				$myGroup.Remove("LDAP://" + $UserDN) | Out-Null
+			}
+			else
+			{
+				throw "User $UserName is not member of the group $GroupName"
+			}
 		}
-		else {
-			throw "User $UserName is not member of the group $GroupName"
+		else
+		{
+			throw $DirectoryEntry.Message
 		}
 	}
-	catch {
+	catch
+	{
 		$bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
 	
 	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage})
 	return $ReturnObject
-	
-
 }
 
-Function Test-EitGroupMember { 
+function Test-EitGroupMember
+{ 
 	<#
 		.Synopsis
 			Is user member of a group 
@@ -435,7 +498,8 @@ Function Test-EitGroupMember {
 	# Function to check if $ADObject is a member of security group $GroupName. 
 	$GroupList = @{}
 	# Check if security group memberships for this principal have been determined. 
-	If ($GroupList.ContainsKey($ADObject.sAMAccountName.ToString() + "\") -eq $False) { 
+	if ($GroupList.ContainsKey($ADObject.sAMAccountName.ToString() + "\") -eq $False)
+	{ 
 		# Memberships need to be determined for this principal. Add "pre-Windows 2000" 
 		# name to the hash table. 
 		$GroupList.Add($ADObject.sAMAccountName.ToString() + "\", $True) 
@@ -443,7 +507,8 @@ Function Test-EitGroupMember {
 		$ADObject.psbase.RefreshCache("tokenGroups") 
 		$SIDs = $ADObject.psbase.Properties.Item("tokenGroups") 
 		# Populate hash table with security group memberships. 
-		ForEach ($Value In $SIDs) { 
+		ForEach ($Value In $SIDs)
+		{ 
 			$SID = New-Object System.Security.Principal.SecurityIdentifier $Value, 0 
 			# Translate into "pre-Windows 2000" name. 
 			$Group = $SID.Translate([System.Security.Principal.NTAccount]) 
@@ -451,16 +516,19 @@ Function Test-EitGroupMember {
 		} 
 	} 
 	# Check if $ADObject is a member of $GroupName. 
-	If ($GroupList.ContainsKey($ADObject.sAMAccountName.ToString() + "\" + $GroupName)) { 
+	If ($GroupList.ContainsKey($ADObject.sAMAccountName.ToString() + "\" + $GroupName))
+	{ 
 		Return $True 
-	} 
-	Else { 
+	}
+	else
+	{ 
 		Return $False 
 	} 
 } 
 
 
-function Get-EitGroupMembers { 
+function Get-EitGroupMembers
+{
 	<#
 		.Synopsis
 			List Group Members 
@@ -489,57 +557,79 @@ function Get-EitGroupMembers {
 
 
 		.NOTES  
-			Copyright: (c)2016 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Copyright	: 	(c) 2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.2
 			
 			History:
 				V1.0 - 13.04.2016 - M.Trojahn - Initial creation
 				V1.1 - 08.12.2020 - M.Trojahn - fix error (use Variable $DNSDomain instead of fix value)
+				V1.2 - 14.06.2021 - M.Trojahn - error handling from Get-EitDirectoryEntry
 	#>	
-	Param(
-		[Parameter(Mandatory=$True)] [string] $GroupName,
-		[Parameter(Mandatory=$True)] [string] $DNSDomain,
-		[Parameter(Mandatory=$False)] [string] $AdminUser="", 
-		[Parameter(Mandatory=$False)] [string] $AdminPassword=$Null
+	Param (
+		[Parameter(Mandatory = $True)]
+		[string]$GroupName,
+		[Parameter(Mandatory = $True)]
+		[string]$DNSDomain,
+		[Parameter(Mandatory = $False)]
+		[string]$AdminUser = "",
+		[Parameter(Mandatory = $False)]
+		[string]$AdminPassword = $Null
 	)
 	
-	[boolean] 	$bSuccess = $true
-	[string] 	$StatusMessage = "Group members from Group $GroupName have successfully been listed"
+	[boolean]$bSuccess = $true
+	[string]$StatusMessage = "Group members from Group $GroupName have successfully been listed"
 	
-	try { 
-				
-		
+	try
+	{
 		$DirectoryEntry = new-object DirectoryServices.DirectoryEntry(("LDAP://" + $DNSDomain))
 		$GroupEntry = Get-EitDirectoryEntry -ADFindType group -DNSDomain $DNSDomain -cName $GroupName
-		$MyGroup = New-Object System.DirectoryServices.DirectoryEntry($GroupEntry.DirectoryEntry.Path)
-		$Filter = "(&(memberof:1.2.840.113556.1.4.1941:=" + $MyGroup.distinguishedName.toString() + ")(objectCategory=user))"
-		$Searcher = New-Object System.DirectoryServices.DirectorySearcher($DirectoryEntry)
-		$Searcher.PageSize = 1000
-		$Searcher.Filter = $Filter
-		$Searcher.SearchScope = "Subtree"
-		$Searcher.PropertiesToLoad.Add("displayName") | Out-Null
-		$Searcher.PropertiesToLoad.Add("distinguishedName") | Out-Null
-		$Searcher.PropertiesToLoad.Add("sAMAccountName") | Out-Null
-		$colResults = $Searcher.FindAll()
-		
-		$MemberList = @()
-		foreach ($Result in $colResults) {
-			$UserInfoObject = ([pscustomobject]@{samaccountname=$Result.Properties["samaccountname"];DisplayName=$Result.Properties["DisplayName"];distinguishedName=$Result.Properties["distinguishedName"]})
-			$MemberList += $UserInfoObject
+		if ($GroupEntry.Success -eq "True")
+		{
+			$MyGroup = New-Object System.DirectoryServices.DirectoryEntry($GroupEntry.DirectoryEntry.Path)
+			$Filter = "(&(memberof:1.2.840.113556.1.4.1941:=" + $MyGroup.distinguishedName.toString() + ")(objectCategory=user))"
+			$Searcher = New-Object System.DirectoryServices.DirectorySearcher($DirectoryEntry)
+			$Searcher.PageSize = 1000
+			$Searcher.Filter = $Filter
+			$Searcher.SearchScope = "Subtree"
+			$Searcher.PropertiesToLoad.Add("displayName") | Out-Null
+			$Searcher.PropertiesToLoad.Add("distinguishedName") | Out-Null
+			$Searcher.PropertiesToLoad.Add("sAMAccountName") | Out-Null
+			$colResults = $Searcher.FindAll()
+			
+			$MemberList = @()
+			foreach ($Result in $colResults)
+			{
+				$UserInfoObject = ([pscustomobject]@{ samaccountname = $Result.Properties["samaccountname"]; DisplayName = $Result.Properties["DisplayName"]; distinguishedName = $Result.Properties["distinguishedName"] })
+				$MemberList += $UserInfoObject
+			}
+		}
+		else
+		{
+			throw $GroupEntry.Message
 		}
 	}
 	
-	catch {
+	catch
+	{
 		$bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
 	
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;GroupMembers=$MemberList})
+	if ($bSuccess -ne $false)
+	{
+		$ReturnObject = ([pscustomobject]@{ Success = $bSuccess; Message = $StatusMessage; GroupMembers = $MemberList })
+	}
+	else
+	{
+		$ReturnObject = ([pscustomobject]@{ Success = $bSuccess; Message = $StatusMessage; GroupMembers = "n/a" })
+	}
 	return $ReturnObject
 }
 
 
-function Get-EitADUserLastLogon {
+
+function Get-EitADUserLastLogon
+{
 	<#
 		.Synopsis
 			Determining a User's Last Logon Time
@@ -572,29 +662,36 @@ function Get-EitADUserLastLogon {
 	)
 	[string] 	$StatusMessage = "LastLogn for user $Username has successfully been listed"
 	$bSuccess = $true
-	try {
+	try
+	{
 		$DCs = Get-ADDomainController -Filter * -Server $((Get-ADDomainController -DomainName $DomainName -Discover).hostname)
 		$Time = 0
-		foreach($DC in $DCs) { 
-			if (Test-EitPort -ComputerName $DC.HostName -port 139) {
+		foreach ($DC in $DCs)
+		{
+			if (Test-EitPort -ComputerName $DC.HostName -port 139)
+			{
 				$User = Get-ADUser $UserName -Server $DC.HostName| Get-ADObject -Properties lastLogon 
 				$User.LastLogon
 				$DC.HostName
-				if($User.LastLogon -gt $Time) {
+				if ($User.LastLogon -gt $Time)
+				{
 					$Time = $User.LastLogon
 					$LoginDC = $DC.HostName
 				}
 			}
 		}
-		if ($Time -ne 0) {
+		if ($Time -ne 0)
+		{
 			$dt = [DateTime]::FromFileTime($time)
 		}
-		else {
+		else
+		{
 			$bSuccess = $false
 			$StatusMessage = "LastLogon not found"
 		}
-	}	
-	catch {
+	}
+	catch
+	{
 		$bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
@@ -604,7 +701,8 @@ function Get-EitADUserLastLogon {
 }
 
 
-function Get-EitADComputer {
+function Get-EitADComputer
+{
 	<#
 		.Synopsis
 			Get a computer object from the domain
@@ -640,18 +738,19 @@ function Get-EitADComputer {
 	[boolean] 	$bSuccess = $true
 	[string] 	$StatusMessage = "AD Computer has successfully been listed"
 	
-	
-	
-	
-	try {
-		if ($DNSDomainName.length -ne 0) {
+	try
+	{
+		if ($DNSDomainName.length -ne 0)
+		{
 			$ADObject = Get-ADComputer -Identity $ComputerName -Server $DNSDomainName
 		}
-		else {
+		else
+		{
 			$ADObject = Get-ADComputer -Identity $ComputerName
 		}
 	}
-	catch [Microsoft.ActiveDirectory.Management.ADIdentityNotFoundException] {
+	catch [Microsoft.ActiveDirectory.Management.ADIdentityNotFoundException]
+	{
 		$bSuccess = $false
 		$ADObject = $null
 		$StatusMessage = $_.Exception.Message
@@ -661,9 +760,10 @@ function Get-EitADComputer {
 	return $ReturnObject
 }
 
-	
 
-function Get-EitLapsPassword {
+
+function Get-EitLapsPassword
+{
 	<#
 	.SYNOPSIS
 		Get the local administrator password for a specified computer stored in Active Directory by LAPS.
@@ -733,68 +833,79 @@ function Get-EitLapsPassword {
    
 	$ErrorActionPreference = 'Stop'
 	$LapsPasswordAttributeName = 'ms-Mcs-AdmPwd'
-
-	foreach ($Computer in $ComputerName) {
-		try {
-
+	
+	foreach ($Computer in $ComputerName)
+	{
+		try
+		{
 			# get local administrator account information if specified
-			if ($IncludeLocalAdministratorAccountName) {
+			if ($IncludeLocalAdministratorAccountName)
+			{
 				Write-Verbose -Message "Getting local administrator account information from $Computer"
-				try {
+				try
+				{
 					$LocalAdministratorAccount = $LocalAdministratorAccount = Get-WmiObject -ComputerName $Computer -Class Win32_UserAccount -Filter "LocalAccount='True' And Sid like '%-500'" -Credential $Credential
 					$LocalAdministratorAccountName = $LocalAdministratorAccount.Name
 				}
-				catch [System.UnauthorizedAccessException] {
+				catch [System.UnauthorizedAccessException]
+				{
 					Write-Warning -Message $_.Exception.Message
 					$LocalAdministratorAccountName = '-ACCESS DENIED-'
 				}
-				catch {
+				catch
+				{
 					Write-Warning -Message $_.Exception.Message
 					$LocalAdministratorAccountName = '-UNKNOWN-'
 				}
 			}
 
-
 			# get LAPS password
 			Write-Verbose -Message "Getting LAPS password information for $Computer"
-			if ($Credential.UserName -ne $null) {
+			if ($Credential.UserName -ne $null)
+			{
 				$ADComputer = Get-ADComputer -Identity $Computer -Properties $LapsPasswordAttributeName -Credential $Credential
 			}
-			else {
+			else
+			{
 				$ADComputer = Get-ADComputer -Identity $Computer -Properties $LapsPasswordAttributeName
 			}
 			
-			if ($ADComputer.$LapsPasswordAttributeName) {
-				if ($AsSecureString) {
+			if ($ADComputer.$LapsPasswordAttributeName)
+			{
+				if ($AsSecureString)
+				{
 					$LapsPassword = ConvertTo-SecureString -String $ADComputer.$LapsPasswordAttributeName -AsPlainText -Force
 				}
-				else {
+				else
+				{
 					$LapsPassword = $ADComputer.$LapsPasswordAttributeName
 				}
 			}
-			else {
+			else
+			{
 				$LapsPassword = '-ACCESS DENIED-'
 			}
 		
-			
 			$LapsPasswordProperties = [ordered]@{
 				ComputerName = $Computer
 				LapsPassword = $LapsPassword
 			}
-			if ($IncludeLocalAdministratorAccountName) {
+			if ($IncludeLocalAdministratorAccountName)
+			{
 				$LapsPasswordProperties.Add('Username', $LocalAdministratorAccountName)
 			}
 			$LapsPassword = New-Object -TypeName PSCustomObject -Property $LapsPasswordProperties
 			$LapsPassword
-
 		}
-		catch {
+		catch
+		{
 			Write-Error -Message $_.Exception.Message
 		}
 	}
-}	
+}
 
-function Get-EitBitLockerPassword {	
+function Get-EitBitLockerPassword
+{	
 <#
  .Synopsis
 		List BitLocker Password
@@ -824,20 +935,25 @@ function Get-EitBitLockerPassword {
 	$bSuccess = $true
 	$BitLockerData = @()
 	
-	try {
+	try
+	{
 		$ComputerObject = Get-ADComputer -Filter {Name -eq $ComputerName}
-		if ($ComputerObject -eq $null) {
+		if ($ComputerObject -eq $null)
+		{
 			throw "Computer object for computer $ComputerName not found."
 		}
-		else {
+		else
+		{
 			$AddedTime = ""
 			$PasswordID = ""
 			$RecoveryPassword = "<not set>"
 			$BitLockerObjects = Get-ADObject -Filter {objectclass -eq "msFVE-RecoveryInformation"} -SearchBase $ComputerObject.DistinguishedName -Properties "msFVE-RecoveryPassword"
-			$BitLockerObjects | Out-File C:\Temp\edu1.txt
-			if ($BitLockerObjects -ne $null) {
-				foreach ($BitLockerObject in $BitLockerObjects) {
-					if ($BitLockerObject.'msFVE-RecoveryPassword') {
+			if ($BitLockerObjects -ne $null)
+			{
+				foreach ($BitLockerObject in $BitLockerObjects)
+				{
+					if ($BitLockerObject.'msFVE-RecoveryPassword')
+					{
 						$tmpData = $BitLockerObject.Name.Trim("}").Split("{")
 						$tmpDate = $tmpData[0].Split("+")
 						$AddedTime = [DateTime]$tmpDate[0] 
@@ -845,18 +961,21 @@ function Get-EitBitLockerPassword {
 						$RecoveryPassword = $BitLockerObject.'msFVE-RecoveryPassword'
 						$BitLockerData += ([pscustomobject]@{DateAdded=$AddedTime;PasswordID=$PasswordID;RecoveryPassword=$RecoveryPassword;})	
 					}
-					else {
+					else
+					{
 						# do nothing
 					}
 				}
 			}
-			else {
+			else
+			{
 				# do nothing
 			}
 			$BitLockerData = $BitLockerData | Sort-Object -Property DateAdded
 		}	
 	}
-	catch {
+	catch
+	{
 		$bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
