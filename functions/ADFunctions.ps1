@@ -2,7 +2,7 @@
 # ADFunctions.ps1
 # ===========================================================================
 # (c) 2021 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.7
+# Version 1.8
 #
 # AD Functions for Raptor Scripts
 #
@@ -17,7 +17,7 @@
 #   V1.5 - 08.12.2020 - M.Trojahn - Fix error in Get-EitGroupMembers
 #   V1.6 - 06.04.2021 - M.Trojahn - Get-EitBitLockerPassword
 #   V1.7 - 14.06.2021 - M.Trojahn - Error handling in Get-EitDirectoryEntry, Get-EitRDSProfilePath, Add-EitUser2Group, Remove-EitUserFromGroup, Get-EitGroupMembers
-
+#   V1.8 - 29.06.2021 - M.Trojahn - Use correct function Test-EitGroupMember instead of Is-EitGroupMember in Add-EitUser2Group
 
 
 function Get-EitDirectoryEntry
@@ -292,11 +292,12 @@ function Add-EitUser2Group
 
 		.NOTES  
 			Copyright: (c) 2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.1
+			Version		:	1.2
 			
 			History:
 				V1.0 - 03.02.2016 - M.Trojahn - Initial creation
 				V1.1 - 14.06.2021 - M.Trojahn - Add error handling from Get-EitDirectoryEntry
+				V1.2 - 29.06.2021 - M.Trojahn - Use correct function Test-EitGroupMember instead of Is-EitGroupMember
 	#>
 	
 	Param(
@@ -335,7 +336,7 @@ function Add-EitUser2Group
 		{
 			$UserDN = $DirectoryEntry.DirectoryEntry.distinguishedName
 			$MyUser = [adsi]("LDAP://" + $UserDN)
-			if (!(Is-EitGroupMember -ADObject $MyUser -GroupName $GroupName))
+			if (!(Test-EitGroupMember -ADObject $MyUser -GroupName $GroupName))
 			{
 				$myGroup.Add("LDAP://" + $UserDN) | Out-Null
 			}
@@ -396,11 +397,12 @@ function Remove-EitUserFromGroup
 
 		.NOTES  
 			Copyright	: 	(c) 2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.1
+			Version		:	1.2
 			
 			History:
 				V1.0 - 03.02.2016 - M.Trojahn - Initial creation
 				V1.1 - 14.06.2021 - M.Trojahn - error handling from Get-EitDirectoryEntry 
+				V1.2 - 29.06.2021 - M.Trojahn - Use correct function Test-EitGroupMember instead of Is-EitGroupMember
 	#>
 	
 	Param(
@@ -439,7 +441,7 @@ function Remove-EitUserFromGroup
 		{
 			$UserDN = $DirectoryEntry.DirectoryEntry.distinguishedName
 			$MyUser = [adsi]("LDAP://" + $UserDN)
-			if (Is-EitGroupMember -ADObject $MyUser -GroupName $GroupName)
+			if (Test-EitGroupMember -ADObject $MyUser -GroupName $GroupName)
 			{
 				$myGroup.Remove("LDAP://" + $UserDN) | Out-Null
 			}
@@ -477,11 +479,12 @@ function Test-EitGroupMember
 		.Parameter GroupName
 			the group name to remove
 			
-			.EXAMPLE
+		.EXAMPLE
 			Test-EitGroupMember -ADObject MyADObject -Groupname MyGroupName 
 			
 		.OUTPUTS
 			true or false
+			
 		.NOTES  
 			Copyright: (c)2020 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
 			Version		:	1.0
@@ -507,7 +510,7 @@ function Test-EitGroupMember
 		$ADObject.psbase.RefreshCache("tokenGroups") 
 		$SIDs = $ADObject.psbase.Properties.Item("tokenGroups") 
 		# Populate hash table with security group memberships. 
-		ForEach ($Value In $SIDs)
+		foreach ($Value In $SIDs)
 		{ 
 			$SID = New-Object System.Security.Principal.SecurityIdentifier $Value, 0 
 			# Translate into "pre-Windows 2000" name. 
@@ -516,13 +519,13 @@ function Test-EitGroupMember
 		} 
 	} 
 	# Check if $ADObject is a member of $GroupName. 
-	If ($GroupList.ContainsKey($ADObject.sAMAccountName.ToString() + "\" + $GroupName))
+	if ($GroupList.ContainsKey($ADObject.sAMAccountName.ToString() + "\" + $GroupName))
 	{ 
-		Return $True 
+		return $True 
 	}
 	else
 	{ 
-		Return $False 
+		return $False 
 	} 
 } 
 
