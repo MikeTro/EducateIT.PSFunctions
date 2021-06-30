@@ -2,7 +2,7 @@
 # ScriptFunctions.ps1
 # ===========================================================================
 # (c)2021 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.6
+# Version 1.7
 #
 # Useful Script functions
 # History:
@@ -12,7 +12,8 @@
 #   V1.3 - 21.10.2019 - M.Trojahn - Add New-EitFileLogger
 #	V1.4 - 16.03.2020 - M.Trojahn - Remove function test-port
 #	V1.5 - 14.12.2020 - M.Trojahn - Move New-EitFileLogger to newly created LogFunctions.ps1
-#	V1.6 - 28.14.2021 - M.Trojahn - Add Test-EitIsDriveWritable, Get-EitFirstWritableDrive & Get-EitLastWritableDrive
+#	V1.6 - 28.04.2021 - M.Trojahn - Add Test-EitIsDriveWritable, Get-EitFirstWritableDrive & Get-EitLastWritableDrive
+#	V1.7 - 30.06.2021 - M.Trojahn - Add New-EitSecret
 #	
 # ===========================================================================
 
@@ -374,4 +375,77 @@ function Get-EitFirstWritableDrive {
         }    
     }    
 }	
+
+
+function New-EitSecret
+{
+	<#
+	.Synopsis
+			Creates a new secret
+		.Description
+			Creates a new secret key par for the raptor system
+		
+		.Parameter Label
+			The label of the secret
+	
+		.Parameter Version
+			The secret version to use. Use this option if you need to create secrets for old software versions. By default, the latest version is used.
+		
+		.Parameter LimitForWeb
+    		Limit the characters in the generated secrets to a set suitable for web basic authentication. Use this option if you like to authenticate using a HTTP/JSON network interface.	
+	
+		.EXAMPLE
+			 New-EitSecret -Label MyLabel
+		
+		.NOTES  
+			Copyright: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.0
+			
+			History:
+				V1.0 - 30.06.2021 - M.Trojahn - Initial creation
+			
+	#>	
+	param (
+		[parameter(Mandatory = $true)]
+		[string]$Label,
+		[parameter(Mandatory = $false)]
+		[int]$Version = 2,
+		[parameter(Mandatory = $false)]
+		[switch]$LimitForWeb
+	)
+	try
+	{
+		$bSuccess = $true
+		$StatusMessage = "New secret successfully created "
+		$SecretInfo = New-TemporaryFile
+		$NewSecret = $Null
+		$exe = "$env:ProgramFiles\EducateIT\SecretGeneratorCommand\SecretGeneratorCommand.exe"
+		if ($LimitForWeb)
+		{
+			$arguments = "--label=$Label --version=$Version --file=$SecretInfo --limit-for-web"
+		}
+		else
+		{
+			$arguments = "--label=$Label --version=$Version --file=$SecretInfo"
+		}
+		if (Test-Path $exe)
+		{
+			Start-Process -FilePath $exe -ArgumentList $arguments -Wait
+			$NewSecret = Get-Content -Path $SecretInfo | ConvertFrom-Json
+			Remove-Item $SecretInfo -Force
+		}
+		else
+		{
+			throw "Error: $exe does not exists"
+		}
+	}
+	catch
+	{
+		$bSuccess = $false
+		$StatusMessage = $_.Exception.Message
+	}
+	
+	$ReturnObject = ([pscustomobject]@{ Success = $bSuccess; Message = $StatusMessage; Secret = $NewSecret })
+	return $ReturnObject
+}
 
