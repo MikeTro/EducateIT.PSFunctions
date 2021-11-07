@@ -185,7 +185,7 @@ function Get-EitServerServiceInfo
 			$tmpOutPut = New-TemporaryFile
 			$dummy = Start-Process -FilePath $ServerExePath -ArgumentList "--license-status" -RedirectStandardOutput $tmpOutPut -PassThru -Wait
 			$LicData = Get-Content $tmpOutPut
-			If ($LicData.Contains("Licensed to:"))
+			if ($LicData -match "Licensed to:")
 			{
 				$tmp = $LicData[0] -split ': '
 				$LicensedTo = $tmp[1]
