@@ -213,7 +213,7 @@ function Get-EitServerServiceInfo
 			"0"
 		}
 		$ServerInfo
-	} -ArgumentList $ServerExe
+	} -ArgumentList $ServerExePath
 		
 	return ([pscustomobject]@{ComputerName=$ServerInfo.ComputerName;ProductName=$ServerInfo.ProductName;ProductVersion=$ServerInfo.ProductVersion;LicensedTo=$ServerInfo.LicensedTo;ValidLicense=$ServerInfo.ValidLicense;Status=$ServerInfo.Status;IsTrial=$ServerInfo.IsTrial;ExpiresInDays=$ServerInfo.ExpiresInDays})
 }
