@@ -153,7 +153,7 @@ function Get-EitServerServiceInfo
 		the path to the server executable, for example "C:\Program Files\EducateIT\RaptorServer\RaptorServer.exe"	
 		
 	.EXAMPLE
-		Get-EitServerInfo -ServerExe "C:\Program Files\EducateIT\RaptorServer\RaptorServer.exe"
+		Get-EitServerInfo -ServerExePath "C:\Program Files\EducateIT\RaptorServer\RaptorServer.exe"
 		
 	.OUTPUTS
 		ComputerName   : RAPTOR19
@@ -179,11 +179,11 @@ function Get-EitServerServiceInfo
 	)
 	
 	$ServerInfo = Invoke-Command -ComputerName $ComputerName -ScriptBlock {
-		$ExePath = $args[0]
-		if (Test-Path $ExePath)
+		$ServerExePath = $args[0]
+		if (Test-Path $ServerExePath)
 		{
 			$tmpOutPut = New-TemporaryFile
-			$dummy = Start-Process -FilePath $ExePath -ArgumentList "--license-status" -RedirectStandardOutput $tmpOutPut -PassThru -Wait
+			$dummy = Start-Process -FilePath $ServerExePath -ArgumentList "--license-status" -RedirectStandardOutput $tmpOutPut -PassThru -Wait
 			$LicData = Get-Content $tmpOutPut
 			If ($LicData.Contains("Licensed to:"))
 			{
@@ -197,7 +197,7 @@ function Get-EitServerServiceInfo
 			Remove-Item $tmpOutPut
 			
 			$tmpOutPut = New-TemporaryFile
-			$dummy = Start-Process -FilePath $ExePath -ArgumentList "--license-status-json" -RedirectStandardOutput $tmpOutPut -PassThru -Wait
+			$dummy = Start-Process -FilePath $ServerExePath -ArgumentList "--license-status-json" -RedirectStandardOutput $tmpOutPut -PassThru -Wait
 				
 			$LicData = try { Get-Content $tmpOutPut | ConvertFrom-Json } catch { $null }
 			if ($LicData -eq $null)
@@ -205,7 +205,7 @@ function Get-EitServerServiceInfo
 				$LicData = ([pscustomobject]@{LicensedTo="n/a";valid_license="n/a";Status="n/a";is_trial="n/a";expires_in_days="n/a"})
 			}
 			Remove-Item $tmpOutPut
-			$VersionInfo = $(Get-Item -Path $ExePath).VersionInfo
+			$VersionInfo = $(Get-Item -Path $ServerExePath).VersionInfo
 			$ServerInfo += ([pscustomobject]@{ComputerName=$env:ComputerName;ProductName=$VersionInfo.ProductName;ProductVersion=$VersionInfo.ProductVersion;LicensedTo=$LicensedTo;ValidLicense=$LicData.valid_license;Status=$LicData.status;IsTrial=$LicData.is_trial;ExpiresInDays=$LicData.expires_in_days})
 		}
 		else
