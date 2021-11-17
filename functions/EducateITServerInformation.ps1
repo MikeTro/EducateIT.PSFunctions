@@ -217,7 +217,7 @@ function Get-EitServerServiceInfo
 		}
 		else
 		{
-			"0"
+			$ServerInfo += ([pscustomobject]@{ComputerName=$env:ComputerName;Name=$Name;ProductName="";ProductVersion="";LicensedTo="";ValidLicense="";Status="";IsTrial="";ExpiresInDays=""})
 		}
 		$ServerInfo
 	} -ArgumentList $Name, $ServerExePath
