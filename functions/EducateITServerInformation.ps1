@@ -149,37 +149,44 @@ function Get-EitServerServiceInfo
 	.Parameter ComputerName
 		the computer name
 		
+	.Parameter Name
+		the name of the service
+		
 	.Parameter ServerExePath
 		the path to the server executable, for example "C:\Program Files\EducateIT\RaptorServer\RaptorServer.exe"	
 		
 	.EXAMPLE
-		Get-EitServerInfo -ServerExePath "C:\Program Files\EducateIT\RaptorServer\RaptorServer.exe"
+		Get-EitServerInfo -Name "RaptorServer" -ServerExePath "C:\Program Files\EducateIT\RaptorServer\RaptorServer.exe"
 		
 	.OUTPUTS
-		ComputerName   : RAPTOR19
-		ProductName    : Raptor
-		ProductVersion : 4.10.2
-		LicensedTo     : n/a
-		ValidLicense   : True
-		Status         : valid
-		IsTrial        : False
-		ExpiresInDays  : 165
+		ComputerName   	: RAPTOR19
+		Name			: Raptor
+		ProductName    	: Raptor
+		ProductVersion 	: 4.10.2
+		LicensedTo     	: n/a
+		ValidLicense   	: True
+		Status         	: valid
+		IsTrial        	: False
+		ExpiresInDays  	: 165
 
 	.NOTES  
 		Copyright: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-		Version		:	1.0
+		Version		:	1.1
 		
 		History:
             V1.0 - 07.11.2021 - M.Trojahn - Initial creation
+			V1.1 - 17.11.2021 - M.Trojahn - Add Name parameter, required for reporting
 			
     #>	
 	param(
 		[string]$ComputerName=$env:ComputerName,
+		[parameter(Mandatory = $true)][string]$Name,
 		[parameter(Mandatory = $true)][string]$ServerExePath
 	)
 	
 	$ServerInfo = Invoke-Command -ComputerName $ComputerName -ScriptBlock {
-		$ServerExePath = $args[0]
+		$Name = $args[0]
+		$ServerExePath = $args[1]
 		if (Test-Path $ServerExePath)
 		{
 			$tmpOutPut = New-TemporaryFile
@@ -206,16 +213,16 @@ function Get-EitServerServiceInfo
 			}
 			Remove-Item $tmpOutPut
 			$VersionInfo = $(Get-Item -Path $ServerExePath).VersionInfo
-			$ServerInfo += ([pscustomobject]@{ComputerName=$env:ComputerName;ProductName=$VersionInfo.ProductName;ProductVersion=$VersionInfo.ProductVersion;LicensedTo=$LicensedTo;ValidLicense=$LicData.valid_license;Status=$LicData.status;IsTrial=$LicData.is_trial;ExpiresInDays=$LicData.expires_in_days})
+			$ServerInfo += ([pscustomobject]@{ComputerName=$env:ComputerName;Name=$Name;ProductName=$VersionInfo.ProductName;ProductVersion=$VersionInfo.ProductVersion;LicensedTo=$LicensedTo;ValidLicense=$LicData.valid_license;Status=$LicData.status;IsTrial=$LicData.is_trial;ExpiresInDays=$LicData.expires_in_days})
 		}
 		else
 		{
 			"0"
 		}
 		$ServerInfo
-	} -ArgumentList $ServerExePath
+	} -ArgumentList $Name, $ServerExePath
 		
-	return ([pscustomobject]@{ComputerName=$ServerInfo.ComputerName;ProductName=$ServerInfo.ProductName;ProductVersion=$ServerInfo.ProductVersion;LicensedTo=$ServerInfo.LicensedTo;ValidLicense=$ServerInfo.ValidLicense;Status=$ServerInfo.Status;IsTrial=$ServerInfo.IsTrial;ExpiresInDays=$ServerInfo.ExpiresInDays})
+	return ([pscustomobject]@{ComputerName=$ServerInfo.ComputerName;Name=$ServerInfo.Name;ProductName=$ServerInfo.ProductName;ProductVersion=$ServerInfo.ProductVersion;LicensedTo=$ServerInfo.LicensedTo;ValidLicense=$ServerInfo.ValidLicense;Status=$ServerInfo.Status;IsTrial=$ServerInfo.IsTrial;ExpiresInDays=$ServerInfo.ExpiresInDays})
 }
 
 
