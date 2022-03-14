@@ -156,7 +156,7 @@ function Invoke-EitMsiExec {
 }
 
 
-Function Invoke-EitExecutable {
+function Start-EitExecutable {
 <#
     .DESCRIPTION
         Install a .exe file
@@ -172,17 +172,18 @@ Function Invoke-EitExecutable {
 
     .EXAMPLE
         Install a .exe file
-            Invoke-Executable -FilePath "$PSScriptRoot\Setup.exe" -Arguments '/S,/v"/qn REBOOT=reallysuppress"'
+            Start-EitExecutable -FilePath "$PSScriptRoot\Setup.exe" -Arguments '/S,/v"/qn REBOOT=reallysuppress"'
 
         Install a .exe file with non-standard exit codes 2 and 8
-            Invoke-Executable -FilePath "$PSScriptRoot\Setup.exe" -Arguments '/S' -ExitCodes '2,8'
+            Start-EitExecutable -FilePath "$PSScriptRoot\Setup.exe" -Arguments '/S' -ExitCodes '2,8'
 
     .NOTES  
-        Copyright: (c)2020 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-        Version		:	1.0
+        Copyright: (c)2022 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+        Version		:	1.1
         
         History:
-            V1.0 - 14.12.2020 - M.Trojahn - Initial creation, adaptet from https://raw.githubusercontent.com/ConfigJon/Miscellaneous-Scripts/master/App%20Packaging/Invoke-Executable.ps1
+            V1.0 - 14.12.2020 - M. Trojahn - Initial creation, adaptet from https://raw.githubusercontent.com/ConfigJon/Miscellaneous-Scripts/master/App%20Packaging/
+			V1.1 - 14.03.2022 - M. Trojahn - Rename to Start-EitExecutable because of Trend ApexOne Behavior Monitoring
             
 #>
     param(
