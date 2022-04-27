@@ -16,7 +16,8 @@
 #           V1.7 	- 07.11.2021 - M. Trojahn - rename EducateITServerVersions.ps1 to EducateITServerInformation.ps1
 #											 add Get-EitServerServiceInfo
 #           V1.7.3 	- 17.11.2021 - M. Trojahn - Add Name parameter, required for reporting in Get-EitServerServiceInfo
-#           V1.8.0 	- 14.03.2022 - M. Trojahn - Rename Invoke-EitExecutable to Start-EitExecutable in SetutFunctions.ps1 because of Trend ApexOne Behavior Monitoring
+#           V1.8.0 	- 14.03.2022 - M. Trojahn - Rename Invoke-EitExecutable to Start-EitExecutable in SetupFunctions.ps1 because of Trend ApexOne Behavior Monitoring
+#           V1.8.1 	- 27.04.2022 - M. Trojahn - Add log to Send-EitNetMessage function in MessageFunctions.ps1
 #
 #
 ###############################################################################################
@@ -27,7 +28,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '1.8.0'
+ModuleVersion = '1.8.1'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -42,7 +43,7 @@ Author = 'EducateIT GmbH'
 CompanyName = 'EducateIT GmbH'
 
 # Copyright statement for this module
-Copyright = '(c) 2021 EducateIT GmbH. All rights reserved.'
+Copyright = '(c) 2022 EducateIT GmbH. All rights reserved.'
 
 # Description of the functionality provided by this module
 Description = 'EducateIT Powershell functions'
