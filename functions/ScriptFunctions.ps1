@@ -485,24 +485,27 @@ function New-EitEncryptedPassword
 		$bSuccess = $true
 		$StatusMessage = "Password successfully created "
 		$PWFile = New-TemporaryFile
-		$ErrorFile = New-TemporaryFile
+		$MyErrorFile = New-TemporaryFile
 		$exe = "$env:ProgramFiles\EducateIT\" + $Server + "\" + $Server + ".exe"
 		$arguments = "--pe-encode-password=" + $Password
 		$EncryptedPassword = $null
 		if (Test-Path $exe)
 		{
-			Start-Process -FilePath $exe -ArgumentList $arguments -Wait -RedirectStandardOutput $PWFile -RedirectStandardError $ErrorFile
-			if (Test-Path $ErrorFile)
+			Start-Process -FilePath $exe -ArgumentList $arguments -Wait -RedirectStandardOutput $PWFile -RedirectStandardError $MyErrorFile
+			if (Test-Path $MyErrorFile)
 			{
-				$ErrorMessage = Get-Content -Path $ErrorFile
-				Remove-Item $ErrorFile -Force
-				throw $ErrorMessage
+				$ErrorMessage = Get-Content -Path $MyErrorFile
+				Remove-Item $MyErrorFile -Force 
+				if ($ErrorMessage -ne $null) 
+				{
+					throw $ErrorMessage
+				}
+				else
+				{
+					$EncryptedPassword = Get-Content -Path $PWFile
+					Remove-Item $PWFile -Force
+				}
 			}
-			else
-			{
-				$EncryptedPassword = Get-Content -Path $PWFile
-			}
-			Remove-Item $PWFile -Force
 		}
 		else
 		{
@@ -518,6 +521,8 @@ function New-EitEncryptedPassword
 	$ReturnObject = ([pscustomobject]@{ Success = $bSuccess; Message = $StatusMessage; EncryptedPassword = $EncryptedPassword})
 	return $ReturnObject
 }
+
+
 
 
 
