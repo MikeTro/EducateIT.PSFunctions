@@ -494,18 +494,26 @@ function New-EitEncryptedPassword
 			Start-Process -FilePath $exe -ArgumentList $arguments -Wait -RedirectStandardOutput $PWFile -RedirectStandardError $MyErrorFile
 			if (Test-Path $MyErrorFile)
 			{
-				$ErrorMessage = Get-Content -Path $MyErrorFile
-				Remove-Item $MyErrorFile -Force 
-				if ($ErrorMessage -ne $null) 
+				$EncryptedPassword = Get-Content -Path $PWFile
+				<# Remove-Item $PWFile -Force #>
+				if ($EncryptedPassword -eq $null) 
 				{
-					throw $ErrorMessage
+					if (Test-Path $MyErrorFile)
+					{
+						$ErrorMessage = Get-Content -Path $MyErrorFile
+						<# Remove-Item $MyErrorFile -Force  #>
+						if ($ErrorMessage -ne $null) 
+						{
+							throw $ErrorMessage
+						}
+						else
+						{
+							throw "Unknown error occurred!"
+							
+						}
+					}
 				}
-				else
-				{
-					$EncryptedPassword = Get-Content -Path $PWFile
-					Remove-Item $PWFile -Force
-				}
-			}
+			}	
 		}
 		else
 		{
@@ -521,6 +529,8 @@ function New-EitEncryptedPassword
 	$ReturnObject = ([pscustomobject]@{ Success = $bSuccess; Message = $StatusMessage; EncryptedPassword = $EncryptedPassword})
 	return $ReturnObject
 }
+
+
 
 
 
