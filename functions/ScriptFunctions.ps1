@@ -1,8 +1,8 @@
 #
 # ScriptFunctions.ps1
 # ===========================================================================
-# (c)2021 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.7
+# (c)2022 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
+# Version 1.8
 #
 # Useful Script functions
 # History:
@@ -14,6 +14,7 @@
 #	V1.5 - 14.12.2020 - M.Trojahn - Move New-EitFileLogger to newly created LogFunctions.ps1
 #	V1.6 - 28.04.2021 - M.Trojahn - Add Test-EitIsDriveWritable, Get-EitFirstWritableDrive & Get-EitLastWritableDrive
 #	V1.7 - 30.06.2021 - M.Trojahn - Add New-EitSecret
+#	V1.8 - 03.08.2022 - M.Trojahn - New-EitEncryptedPassword
 #	
 # ===========================================================================
 
@@ -448,4 +449,75 @@ function New-EitSecret
 	$ReturnObject = ([pscustomobject]@{ Success = $bSuccess; Message = $StatusMessage; Secret = $NewSecret })
 	return $ReturnObject
 }
+
+function New-EitEncryptedPassword
+{
+	<#
+	.Synopsis
+			Creates a encrypted password
+		.Description
+			Creates a encrypted password for the raptor system
+		
+		.Parameter Server
+			The server 
+	
+		.Parameter Password
+			The password
+		
+		
+		.EXAMPLE
+			 New-EitEncryptedPassword -Server ActionsServer -Password MyPassword
+		
+		.NOTES  
+			Copyright: (c)2022 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.0
+			
+			History:
+				V1.0 - 03.08.2022 - M.Trojahn - Initial creation
+			
+	#>	
+	param (
+		[Parameter(Mandatory=$true)] [ValidateSet("ActionsServer","RaptorServer", "ProcessMonitorCollector")] [string]$Server,
+		[Parameter(Mandatory=$true)] [string]$Password
+	)
+	try
+	{
+		$bSuccess = $true
+		$StatusMessage = "Password successfully created "
+		$PWFile = New-TemporaryFile
+		$ErrorFile = New-TemporaryFile
+		$exe = "$env:ProgramFiles\EducateIT\" + $Server + "\" + $Server + ".exe"
+		$arguments = "--pe-encode-password=" + $Password
+		$EncryptedPassword = $null
+		if (Test-Path $exe)
+		{
+			Start-Process -FilePath $exe -ArgumentList $arguments -Wait -RedirectStandardOutput $PWFile -RedirectStandardError $ErrorFile
+			if (Test-Path $ErrorFile)
+			{
+				$ErrorMessage = Get-Content -Path $ErrorFile
+				Remove-Item $ErrorFile -Force
+				throw $ErrorMessage
+			}
+			else
+			{
+				$EncryptedPassword = Get-Content -Path $PWFile
+			}
+			Remove-Item $PWFile -Force
+		}
+		else
+		{
+			throw "Error: $exe does not exists"
+		}
+	}
+	catch
+	{
+		$bSuccess = $false
+		$StatusMessage = $_.Exception.Message
+	}
+	
+	$ReturnObject = ([pscustomobject]@{ Success = $bSuccess; Message = $StatusMessage; EncryptedPassword = $EncryptedPassword})
+	return $ReturnObject
+}
+
+
 

@@ -18,6 +18,7 @@
 #           V1.7.3 	- 17.11.2021 - M. Trojahn - Add Name parameter, required for reporting in Get-EitServerServiceInfo
 #           V1.8.0 	- 14.03.2022 - M. Trojahn - Rename Invoke-EitExecutable to Start-EitExecutable in SetupFunctions.ps1 because of Trend ApexOne Behavior Monitoring
 #           V1.8.1 	- 27.04.2022 - M. Trojahn - Add log to Send-EitNetMessage function in MessageFunctions.ps1
+#           V1.8.2 	- 03.08.2022 - M. Trojahn - Add New-EitEncryptedPassword function in ScriptFunctions.ps1
 #
 #
 ###############################################################################################
@@ -28,7 +29,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '1.8.1'
+ModuleVersion = '1.8.2'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
