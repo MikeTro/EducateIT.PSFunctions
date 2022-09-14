@@ -18,6 +18,7 @@
 #   V1.6 - 06.04.2021 - M.Trojahn - Get-EitBitLockerPassword
 #   V1.7 - 14.06.2021 - M.Trojahn - Error handling in Get-EitDirectoryEntry, Get-EitRDSProfilePath, Add-EitUser2Group, Remove-EitUserFromGroup, Get-EitGroupMembers
 #   V1.8 - 29.06.2021 - M.Trojahn - Use correct function Test-EitGroupMember instead of Is-EitGroupMember in Add-EitUser2Group
+#   V1.9 - 14.09.2022 - M.Trojahn - Change port in Get-EitADUserLastLogon
 
 
 function Get-EitDirectoryEntry
@@ -671,7 +672,7 @@ function Get-EitADUserLastLogon
 		$Time = 0
 		foreach ($DC in $DCs)
 		{
-			if (Test-EitPort -ComputerName $DC.HostName -port 139)
+			if (Test-EitPort -ComputerName $DC.HostName -port 389)
 			{
 				$User = Get-ADUser $UserName -Server $DC.HostName| Get-ADObject -Properties lastLogon 
 				$User.LastLogon
