@@ -20,7 +20,7 @@
 #           V1.8.1 	- 27.04.2022 - M. Trojahn - Add log to Send-EitNetMessage function in MessageFunctions.ps1
 #           V1.8.2 	- 03.08.2022 - M. Trojahn - Add New-EitEncryptedPassword function in ScriptFunctions.ps1
 #           V1.9.0 	- 27.10.2022 - M. Trojahn - Add CitrixDaaSFunctions.ps1
-#
+#           V1.9.1 	- 01.11.2022 - M. Trojahn - ProcessMonitorFunctions.ps1
 #
 ###############################################################################################
 
@@ -30,7 +30,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '1.9.0'
+ModuleVersion = '1.9.1'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -98,7 +98,8 @@ NestedModules = @(
     '.\functions\LogFunctions.ps1',
     '.\functions\SetupFunctions.ps1',
 	'.\functions\EducateITStatisticServerFunctions.ps1'
-	'.\functions\CitrixDaaSFunctions.ps1'
+	'.\functions\CitrixDaaSFunctions.ps1',
+	'.\functions\ProcessMonitorFunctions.ps1'
 )
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.

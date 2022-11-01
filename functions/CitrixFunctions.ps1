@@ -2071,7 +2071,7 @@ Param (
 					Invoke-Command -Session $PSSession -ScriptBlock {Add-PSSnapin citrix*} -ErrorAction stop
 					$BrokerSessions = Invoke-Command -Session $PSSession -ScriptBlock {param($Username) Get-BrokerSession -MaxRecordCount 100000 | Where {$_.UserName -eq $Username}} -ArgumentList $UserName
 					foreach ($BrokerSession in $BrokerSessions) {
-						Write-Host "Stopping session $($BrokerSession.SessionKey) from Server $($BrokerSession.MachineName)..."
+						Write-Host "   Stopping session $($BrokerSession.SessionKey) from Server $($BrokerSession.MachineName)..."
 						Invoke-Command -Session $PSSession -ScriptBlock {param($BrokerSession) Stop-BrokerSession $BrokerSession } -ArgumentList $BrokerSession
 					}
 					Remove-PSSession -Session $PSSession
