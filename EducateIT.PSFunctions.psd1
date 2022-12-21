@@ -21,6 +21,7 @@
 #           V1.8.2 	- 03.08.2022 - M. Trojahn - Add New-EitEncryptedPassword function in ScriptFunctions.ps1
 #           V1.9.0 	- 27.10.2022 - M. Trojahn - Add CitrixDaaSFunctions.ps1
 #           V1.9.1 	- 01.11.2022 - M. Trojahn - ProcessMonitorFunctions.ps1
+#			V1.9.2	- 21.12.2022 - M. Trojahn - Remove MaxRecordCount from Stop-EitBrokerSession in CitrixFunctions.ps1
 #
 ###############################################################################################
 
@@ -30,7 +31,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '1.9.1'
+ModuleVersion = '1.9.2'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()

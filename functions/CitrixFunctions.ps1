@@ -1,8 +1,8 @@
 #
 # CitrixFunctions.ps1
 # ===========================================================================
-# (c)2021 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.9
+# (c)2022 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
+# Version 1.10
 #
 # Citrix Functions for Raptor Scripts
 #
@@ -18,6 +18,7 @@
 #	V1.7 - 26.10.2020 - M.Trojahn - Invoke-EitUserSessionLogoff, Stop-BrokerSession
 #	V1.8 - 08.03.2021 - M.Trojahn - Use -MaxRecordCount 10000 in function Get-EitFarmServers 
 #	V1.9 - 03.05.2021 - M.Trojahn - Don't stop in Invoke-EitUserSessionsLogoff if a broker is not reachable
+#  V1.10 - 21.12.2022 - M.Trojahn - Remove MaxRecordCount from Stop-EitBrokerSession 
 
 
 function Get-EitFarmServers {
@@ -2110,10 +2111,11 @@ function Stop-EitBrokerSession {
              Stop-EitBrokerSession -DDC MyBroker -UID MyUID
        
        .NOTES  
-			Copyright	: (c)2019 by EducateIT GmbH - http://educateit.ch - info@educateit.ch 
-			Version		: 1.0
+			Copyright	: (c)2022 by EducateIT GmbH - http://educateit.ch - info@educateit.ch 
+			Version		: 1.1
 			History:
-				V1.0 - 14.8.2019 - M.Trojahn - Initial creation  
+				V1.0 - 14.08.2019 - M.Trojahn - Initial creation  
+				V1.1 - 21.12.2022 - M.Trojahn - Remove MaxRecordCount 
 
 #>
 
@@ -2135,7 +2137,7 @@ function Stop-EitBrokerSession {
 		$UserSession = Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID -ErrorAction SilentlyContinue} -ArgumentList $UID 
 		If ($UserSession -ne $null) {
 			Write-Host "stopping session..."
-			$rc = Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID -MaxRecordCount 100000 | Stop-BrokerSession -ErrorAction SilentlyContinue} -ArgumentList $UID
+			$rc = Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID | Stop-BrokerSession -ErrorAction SilentlyContinue} -ArgumentList $UID
 			while (($(Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID -ErrorAction SilentlyContinue} -ArgumentList $UID) -ne $null) -and ($i -lt $TimeOut)) {
 				Start-Sleep -Milliseconds 1000
 				Write-Host "   Session is still alive, waiting for session to stop ($i / $TimeOut)..." 
