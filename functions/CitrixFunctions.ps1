@@ -150,7 +150,7 @@ function Get-EitBrokerMachines {
 
 	try 
 	{
-		foreach ($item in $Brokers) 
+		foreach ($Broker in $Brokers) 
 		{
 			if (Test-EitPort -server $Broker -port 5985 -timeout "1000") 
 			{
