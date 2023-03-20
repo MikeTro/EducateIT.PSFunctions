@@ -1,8 +1,8 @@
 #
 # ScriptFunctions.ps1
 # ===========================================================================
-# (c)2022 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.8
+# (c)2023 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
+# Version 1.9
 #
 # Useful Script functions
 # History:
@@ -15,6 +15,7 @@
 #	V1.6 - 28.04.2021 - M.Trojahn - Add Test-EitIsDriveWritable, Get-EitFirstWritableDrive & Get-EitLastWritableDrive
 #	V1.7 - 30.06.2021 - M.Trojahn - Add New-EitSecret
 #	V1.8 - 03.08.2022 - M.Trojahn - New-EitEncryptedPassword
+#	V1.9 - 20.03.2023 - M.Trojahn - Get-EitPSUnique
 #	
 # ===========================================================================
 
@@ -532,6 +533,67 @@ function New-EitEncryptedPassword
 
 
 
+function Get-EitPSUnique 
+{
+	<#
+	.Synopsis
+			Filtering for Unique Objects
+		.Description
+			Filtering for Unique Objects
+		
+		.Parameter InputObject
+			The inputObject to filter 
+	
+		.EXAMPLE
+			$Obj | Get-EitPSUnique
+		
+		.NOTES  
+			Copyright: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.0
+			
+			History:
+				V1.0 - 20.03.2023 - M.Trojahn - Initial creation based on https://github.com/jdhitsolutions/PSScriptTools/blob/master/functions/Get-PSUnique.ps1
+			
+	#>	
+    [cmdletbinding()]
+    [OutputType("object")]
+    Param(
+        [Parameter(Position = 0, Mandatory, ValueFromPipeline)]
+        [ValidateNotNullOrEmpty()]
+        [object]$InputObject
+    )
+
+    begin 
+	{
+        Write-Verbose "[$((Get-Date).TimeOfDay) BEGIN  ] Starting $($MyInvocation.MyCommand)"
+        Write-Debug "[$((Get-Date).TimeOfDay) BEGIN  ] Initializing list"
+        $UniqueList = [System.Collections.Generic.list[object]]::new()
+    } 
+
+    process 
+	{
+        foreach ($item in $InputObject) 
+		{
+            if ($UniqueList.Exists( { -not(Compare-Object $args[0].PSObject.properties.value $item.PSObject.Properties.value) })) 
+			{
+                Write-Debug "[$((Get-Date).TimeOfDay) PROCESS] Skipping: $($item |Out-String)"
+            }
+            else 
+			{
+                Write-Debug "[$((Get-Date).TimeOfDay) PROCESS] Adding as unique: $($item | Out-String)"
+                $UniqueList.add($item)
+            }
+        }
+    } 
+
+    end 
+	{
+        Write-Verbose "[$((Get-Date).TimeOfDay) END    ] Found $($UniqueList.count) unique objects"
+        Write-Debug "[$((Get-Date).TimeOfDay) END    ] Writing results to the pipeline"
+        $UniqueList
+        Write-Verbose "[$((Get-Date).TimeOfDay) END    ] Ending $($MyInvocation.MyCommand)"
+    } 
+}
 
 
 

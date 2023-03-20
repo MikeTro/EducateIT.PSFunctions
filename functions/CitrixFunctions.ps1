@@ -1,8 +1,8 @@
 #
 # CitrixFunctions.ps1
 # ===========================================================================
-# (c)2022 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.10
+# (c)2023 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
+# Version 1.11
 #
 # Citrix Functions for Raptor Scripts
 #
@@ -19,6 +19,7 @@
 #	V1.8 - 08.03.2021 - M.Trojahn - Use -MaxRecordCount 10000 in function Get-EitFarmServers 
 #	V1.9 - 03.05.2021 - M.Trojahn - Don't stop in Invoke-EitUserSessionsLogoff if a broker is not reachable
 #  V1.10 - 21.12.2022 - M.Trojahn - Remove MaxRecordCount from Stop-EitBrokerSession 
+#  V1.11 - 20.03.2023 - M.Trojahn - add Get-EitBrokerMachines
 
 
 function Get-EitFarmServers {
@@ -102,6 +103,86 @@ function Get-EitFarmServers {
 	return $ReturnObject
 }
 	
+
+function Get-EitBrokerMachines {
+	<#
+	 .Synopsis
+			Get citrix machines
+		.Description
+			List Citrix machines
+		
+		.Parameter Brokers
+			the XenDesktop Controllers
+			
+		.EXAMPLE
+			Get-EitBrokerMachines -Brokers xd01
+			List all machines from Broker XD01
+	
+		.EXAMPLE
+			Get-EitBrokerMachines -Brokers xd01, xd02
+			List all machines from the brokers XD01 & XD02
+	
+			
+			
+		.NOTES  
+			Copyright	:	(c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.0
+			
+			History:
+				V1.0 - 20.03.2023 - M.Trojahn - Initial creation
+	 #>	
+	Param 
+		(	[Parameter(Mandatory=$true)]  [string[]]$Brokers
+		) 
+		
+	$MachineList = @()
+	$bSuccess = $false
+	$StatusMessage = "Error while reading machine list!"
+	
+	function Make-EITSBrokerMachineData($DNSName, $MachineName, $SessionSupport, $OSType) {
+		$out = New-Object psobject
+		$out | add-member -type noteproperty -name DNSName $DNSName
+		$out | add-member -type noteproperty -name MachineName $MachineName
+		$out | add-member -type noteproperty -name SessionSupport $SessionSupport
+		$out | add-member -type noteproperty -name OSType $OSType
+		$out
+	}
+
+	try 
+	{
+		foreach ($item in $Brokers) 
+		{
+			if (Test-EitPort -server $Broker -port 5985 -timeout "1000") 
+			{
+				$Session = New-PSSession -ComputerName $Broker -ErrorAction stop 
+				Invoke-Command -Session $Session -ScriptBlock {Add-PSSnapin citrix*} -ErrorAction stop
+				$BrokerMachines = Invoke-Command -Session $Session -ScriptBlock {Get-BrokerMachine -MaxRecordCount 10000 | Select DNSName, MachineName, SessionSupport, OSType} 
+				foreach ($BrokerMachine in $BrokerMachines) 
+				{
+					$MachineList += Make-EITSBrokerMachineData -DNSName $BrokerMachine.DNSName -MachineName $BrokerMachine.MachineName -SessionSupport $BrokerMachine.SessionSupport -OSType $BrokerMachine.OSType
+				}	
+				Remove-PSSession -Session $Session
+				$StatusMessage = "Successfully read machine list..."
+				$bSuccess = $true
+				
+			}
+			else 
+			{
+				throw "ERROR, broker $Broker is not reachable via WinRM!"
+			}
+		}
+	}
+	catch 
+	{
+		$bSuccess = $false
+		$StatusMessage = $_.Exception.Message
+	}
+	
+	$UniqueMachineList = $MachineList | Get-EitPSUnique | Sort DNSName
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;MachineList=$UniqueMachineList})
+	return $ReturnObject
+}
+
 	
 function Get-EitFarmSessions {
 	<#
