@@ -24,6 +24,7 @@
 #			V1.9.2	- 21.12.2022 - M. Trojahn - Remove MaxRecordCount from Stop-EitBrokerSession in CitrixFunctions.ps1
 #			V1.9.3	- 20.03.2023 - M. Trojahn - add Get-EitPSUnique in ScriptFunctions.ps1
 #												add Get-EitBrokerMachine in CitrixFunctions.ps1	
+#			V1.9.4	- 29.03.2023 - M. Trojahn - add Get-EitADUser in ADFunctions.ps1
 #
 ###############################################################################################
 
@@ -33,7 +34,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '1.9.3'
+ModuleVersion = '1.9.4'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()

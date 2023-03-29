@@ -1,24 +1,25 @@
 #
 # ADFunctions.ps1
 # ===========================================================================
-# (c) 2021 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.8
+# (c) 2023 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
+# Version 1.10
 #
 # AD Functions for Raptor Scripts
 #
 # History:
-#   V1.0 - 03.02.2016 - M.Trojahn - Initial creation
-#   V1.1 - 13.04.2016 - M.Trojahn - Add Get-EitGroupMembers
+#   V1.00 - 03.02.2016 - M.Trojahn - Initial creation
+#   V1.01 - 13.04.2016 - M.Trojahn - Add Get-EitGroupMembers
 #                                 - Add Group Param in Get-EitDirectoryEntry
-#   V1.2 - 04.12.2017 - M.Trojahn - Get-EitADUserLastLogon
-#   V1.3 - 26.02.2020 - M.Trojahn - Get-EitADComputer
+#   V1.02 - 04.12.2017 - M.Trojahn - Get-EitADUserLastLogon
+#   V1.03 - 26.02.2020 - M.Trojahn - Get-EitADComputer
 #  									Remove Is-EitGroupMember, add Test-EitGroupMember
-#   V1.4 - 31.03.2020 - M.Trojahn - Add Get-EitLapsPassword
-#   V1.5 - 08.12.2020 - M.Trojahn - Fix error in Get-EitGroupMembers
-#   V1.6 - 06.04.2021 - M.Trojahn - Get-EitBitLockerPassword
-#   V1.7 - 14.06.2021 - M.Trojahn - Error handling in Get-EitDirectoryEntry, Get-EitRDSProfilePath, Add-EitUser2Group, Remove-EitUserFromGroup, Get-EitGroupMembers
-#   V1.8 - 29.06.2021 - M.Trojahn - Use correct function Test-EitGroupMember instead of Is-EitGroupMember in Add-EitUser2Group
-#   V1.9 - 14.09.2022 - M.Trojahn - Change port in Get-EitADUserLastLogon
+#   V1.04 - 31.03.2020 - M.Trojahn - Add Get-EitLapsPassword
+#   V1.05 - 08.12.2020 - M.Trojahn - Fix error in Get-EitGroupMembers
+#   V1.06 - 06.04.2021 - M.Trojahn - Get-EitBitLockerPassword
+#   V1.07 - 14.06.2021 - M.Trojahn - Error handling in Get-EitDirectoryEntry, Get-EitRDSProfilePath, Add-EitUser2Group, Remove-EitUserFromGroup, Get-EitGroupMembers
+#   V1.08 - 29.06.2021 - M.Trojahn - Use correct function Test-EitGroupMember instead of Is-EitGroupMember in Add-EitUser2Group
+#   V1.09 - 14.09.2022 - M.Trojahn - Change port in Get-EitADUserLastLogon
+#   V1.10 - 29.03.2023 - M.Trojahn - add Get-EitADUser
 
 
 function Get-EitDirectoryEntry
@@ -985,4 +986,89 @@ function Get-EitBitLockerPassword
 	}
     $ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;BitLockerPasswords=$BitLockerData})
     return $ReturnObject
+}
+
+
+function Get-EitADUser
+{
+	<#
+		.Synopsis
+			Get a user object from the domain
+		.Description
+			Get a user object from the domain
+		
+		.Parameter UserName
+			the user name
+			
+		.Parameter DNSDomainName
+			the dns name of the domain
+		
+		.EXAMPLE
+			Get-EitADUser -UserName mySamAccountName
+			Get user object by samAccountName
+			
+		.EXAMPLE
+			Get-EitADUser -UserName myName@domain.com
+			Get user object by upn
+			
+		.OUTPUTS
+			Success        : True
+			Message        : AD Computer has successfully been listed
+			ADObject	   : LDAP Path
+
+		.NOTES  
+			Copyright	:	(c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.0
+			
+			History:
+				V1.0 - 29.03.2023 - M.Trojahn - Initial creation
+	#>	
+	Param(
+		[Parameter(Mandatory=$True)] [string] $UserName,
+		[Parameter(Mandatory=$false)] [string] $DNSDomainName
+	)
+
+	[boolean] 	$bSuccess = $true
+	[string] 	$StatusMessage = "AD User has successfully been listed"
+	
+	try
+	{
+		$ADObject = $null
+		if ($UserName -match "@") 
+		{
+			if ($DNSDomainName.length -ne 0)
+			{
+				$ADObject = Get-ADUser -Filter {UserPrincipalName -eq $UserName} -Server $DNSDomainName
+			}
+			else
+			{
+				$ADObject = Get-ADUser -Filter {UserPrincipalName -eq $UserName}
+			}
+			
+			if ($ADObject -eq $Null) 
+			{
+				throw "Cannot find an object with identity: $UserName"
+			}
+		}
+		else
+		{
+			if ($DNSDomainName.length -ne 0)
+			{
+				$ADObject = Get-ADUser -Identity $UserName -Server $DNSDomainName
+			}
+			else
+			{
+				$ADObject = Get-ADUser -Identity $UserName
+			}
+		}	
+	}
+	catch
+	{
+		$bSuccess = $false
+		$ADObject = $null
+		$StatusMessage = $_.Exception.Message
+	}
+		
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;ADObject=$ADObject})
+	return $ReturnObject
 }
