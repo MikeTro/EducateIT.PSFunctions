@@ -2,7 +2,7 @@
 # CitrixFunctions.ps1
 # ===========================================================================
 # (c)2023 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.11
+# Version 1.12
 #
 # Citrix Functions for Raptor Scripts
 #
@@ -20,6 +20,7 @@
 #	V1.9 - 03.05.2021 - M.Trojahn - Don't stop in Invoke-EitUserSessionsLogoff if a broker is not reachable
 #  V1.10 - 21.12.2022 - M.Trojahn - Remove MaxRecordCount from Stop-EitBrokerSession 
 #  V1.11 - 20.03.2023 - M.Trojahn - add Get-EitBrokerMachines
+#  V1.12 - 12.04.2023 - M.Trojahn - add Get-EitBrokerSessions, Stop-EitAllBrokerSessionOnMachine
 
 
 function Get-EitFarmServers {
@@ -2237,6 +2238,166 @@ function Stop-EitBrokerSession {
 		}	
 		else {
 			Throw "ERROR, no session found with UID $UID"
+	    }
+	}
+	catch {
+	    Throw $_.Exception.Message
+	}
+	finally {
+		Remove-PSSession -Session $PSSession
+	}
+}
+
+
+function Get-EitBrokerSessions {
+	<#
+	 .Synopsis
+			Get citrix sessions
+		.Description
+			List Citrix sessions
+		
+		.Parameter Brokers
+			the XenDesktop Controllers
+			
+		.EXAMPLE
+			Get-EitBrokerSessions -Brokers xd01
+			List all sessions from Broker XD01
+	
+		.EXAMPLE
+			Get-EitBrokerSessions -Brokers xd01, xd02
+			List all sessions from brokers XD01 & XD02
+	
+			
+			
+		.NOTES  
+			Copyright	:	(c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.0
+			
+			History:
+				V1.0 - 12.04.2023 - M.Trojahn - Initial creation
+	 #>	
+	Param 
+		(	
+			[Parameter(Mandatory=$true)]  [string[]]$Brokers,
+			[Parameter(Mandatory=$false)]  [string[]]$MachineName
+		) 
+		
+	$SessionList = @()
+	$bSuccess = $false
+	$StatusMessage = "Error while reading session list!"
+	
+	function Make-EITSBrokerSessionData($UserName, $MachineName, $SessionState, $UserUPN, $Uid) {
+		$out = New-Object psobject
+		$out | add-member -type noteproperty -name UserName $UserName
+		$out | add-member -type noteproperty -name UserUPN $UserUPN
+		$out | add-member -type noteproperty -name Uid $Uid
+		$out | add-member -type noteproperty -name MachineName $MachineName
+		$out | add-member -type noteproperty -name SessionState $SessionState
+		
+		$out
+	}
+
+	try 
+	{
+		foreach ($Broker in $Brokers) 
+		{
+			if (Test-EitPort -server $Broker -port 5985 -timeout "1000") 
+			{
+				$Session = New-PSSession -ComputerName $Broker -ErrorAction stop 
+				Invoke-Command -Session $Session -ScriptBlock {Add-PSSnapin citrix*} -ErrorAction stop
+				if ($MachineName -ne $null) 
+				{
+					$BrokerSessions = Invoke-Command -Session $Session -ScriptBlock {param($MachineName) Get-BrokerSession -MachineName $MachineName -MaxRecordCount 10000 | Select UserName, Uid, UserUPN, MachineName, SessionState} -ArgumentList $MachineName
+				}	
+				else
+				{
+					$BrokerSessions = Invoke-Command -Session $Session -ScriptBlock {Get-BrokerSession -MaxRecordCount 10000 | Select UserName, Uid, UserUPN, MachineName, SessionState} 
+				}
+				
+				foreach ($BrokerSession in $BrokerSessions) 
+				{
+					$SessionList += Make-EITSBrokerSessionData -UserName $BrokerSession.UserName -MachineName $BrokerSession.MachineName -SessionState $BrokerSession.SessionState -Uid $BrokerSession.Uid -UserUPN $BrokerSession.UserUPN
+				}	
+				Remove-PSSession -Session $Session
+				$StatusMessage = "Successfully read session list..."
+				$bSuccess = $true
+				
+			}
+			else 
+			{
+				throw "ERROR, broker $Broker is not reachable via WinRM!"
+			}
+		}
+	}
+	catch 
+	{
+		$bSuccess = $false
+		$StatusMessage = $_.Exception.Message
+	}
+	
+	$UniqueSessionList = $SessionList | Get-EitPSUnique | Sort UserUPN
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;SessionList=$UniqueSessionList})
+	return $ReturnObject
+}
+
+
+
+
+
+function Stop-EitAllBrokerSessionOnMachine {
+<#
+       .SYNOPSIS
+             This functions stops all sesion on a given machine.
+
+       .DESCRIPTION
+             Use this function to stop all sesion on a given machine.
+
+       .PARAMETER  Broker
+             The broker where you wish to execute the action
+
+       .PARAMETER  MachineName
+             The machine name
+
+       .EXAMPLE
+             Stop-EitAllBrokerSessionOnMachine -Broker MyBroker -MachineName MyMachineName
+       
+       .NOTES  
+			Copyright	: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch 
+			Version		: 1.0
+			History:
+				V1.0 - 12.04.2023 - M.Trojahn - Initial creation  
+				
+
+#>
+
+    param (
+		[Parameter(Mandatory=$True)][string]$Broker,
+		[Parameter(Mandatory=$True)][string]$MachineName
+	)
+       
+	try {
+		$startTime = Get-Date
+		Write-Host "connecting to Citrix DDC $DDC"
+		$PSSession = New-PSSession -ComputerName $DDC
+		Write-Host "loading Citrix Broker Snapins..."
+		$rc = Invoke-Command -Session $PSSession -ScriptBlock { Add-PSSnapin Citrix.Broker.*}
+		Write-Host "reading session infomation for session $uid..."
+		
+		$TimeOut = 600
+		$i = 0
+		$MachineSessions = Invoke-Command -Session $PSSession -ScriptBlock {param($MachineName) Get-BrokerSession -MachineName $MachineName -MaxRecordCount 10000 -ErrorAction SilentlyContinue} -ArgumentList $MachineName 
+		if ($MachineSessions -ne $null) 
+		{
+			Write-Host "Stopping sessions..."
+			foreach ($MachineSession in $MachineSessions) 
+			{
+				$rc = Invoke-Command -Session $PSSession -ScriptBlock {param($MachineSession) Stop-BrokerSession -InputObject $MachineSession -ErrorAction SilentlyContinue} -ArgumentList $MachineSession
+			}
+			
+			
+		}	
+		else {
+			Throw "ERROR, no session found on machine  $MachineName"
 	    }
 	}
 	catch {
