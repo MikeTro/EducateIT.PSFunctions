@@ -2,20 +2,23 @@
 # ScriptFunctions.ps1
 # ===========================================================================
 # (c)2023 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.9
+# Version 1.10
 #
 # Useful Script functions
 # History:
-#   V1.0 - 01.09.2016 - M.Trojahn - Initial creation
-#   V1.1 - 20.12.2017 - M.Trojahn - Get-EitRemoteComputersFromXenDataConf
-#   V1.2 - 14.08.2019 - M.Trojahn - Update in Get-EitRemoteComputersFromXenDataConf
-#   V1.3 - 21.10.2019 - M.Trojahn - Add New-EitFileLogger
-#	V1.4 - 16.03.2020 - M.Trojahn - Remove function test-port
-#	V1.5 - 14.12.2020 - M.Trojahn - Move New-EitFileLogger to newly created LogFunctions.ps1
-#	V1.6 - 28.04.2021 - M.Trojahn - Add Test-EitIsDriveWritable, Get-EitFirstWritableDrive & Get-EitLastWritableDrive
-#	V1.7 - 30.06.2021 - M.Trojahn - Add New-EitSecret
-#	V1.8 - 03.08.2022 - M.Trojahn - New-EitEncryptedPassword
-#	V1.9 - 20.03.2023 - M.Trojahn - Get-EitPSUnique
+#   V1.00 - 01.09.2016 - M.Trojahn - Initial creation
+#   V1.01 - 20.12.2017 - M.Trojahn - Get-EitRemoteComputersFromXenDataConf
+#   V1.02 - 14.08.2019 - M.Trojahn - Update in Get-EitRemoteComputersFromXenDataConf
+#   V1.03 - 21.10.2019 - M.Trojahn - Add New-EitFileLogger
+#	V1.04 - 16.03.2020 - M.Trojahn - Remove function test-port
+#	V1.05 - 14.12.2020 - M.Trojahn - Move New-EitFileLogger to newly created LogFunctions.ps1
+#	V1.06 - 28.04.2021 - M.Trojahn - Add Test-EitIsDriveWritable, Get-EitFirstWritableDrive & Get-EitLastWritableDrive
+#	V1.07 - 30.06.2021 - M.Trojahn - Add New-EitSecret
+#	V1.08 - 03.08.2022 - M.Trojahn - New-EitEncryptedPassword
+#	V1.09 - 20.03.2023 - M.Trojahn - Get-EitPSUnique
+#	V1.10 - 13.04.2023 - M.Trojahn - Test also for the new raptor server path in Get-EitRemoteComputersFromXenDataConf
+#									 Add Get-EitLinkNamesFromXenDataConf, Get-EitLinkNameForBrokerMachine
+#	
 #	
 # ===========================================================================
 
@@ -170,81 +173,118 @@ function Get-EitRemoteComputersFromXenDataConf {
 			With path to the XenData config file
 			
 		.OUTPUTS
-			Success        : True
-			Message        : Successfully get remote computers from XenData.conf_b.xml
-			RemoteComputers : [String[]] RemoteComputer
+			Success			: True
+			Message			: Successfully get remote computers from XenData.conf_b.xml
+			RemoteComputers	: [String[]] RemoteComputer
 
 
 		.NOTES  
-			Copyright: (c)2019 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.1
+			Copyright: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.2
 			
 			History:
 				V1.0 - 20.12.2017 - M.Trojahn - Initial creation
 				V1.1 - 14.08.2019 - M.Trojahn - LinkName Parameter added
+				V1.2 - 12.04.2023 - M.Trojahn - Test also for the new raptor server path (C:\Program Files\EducateIT\Raptor\)
 		#>	
 	Param(
-        [string] $XenDataConfPath="C:\Program Files\EducateIT\RaptorServer\conf\XenData2.conf_b.xml",
+        [string] $XenDataConfPath="default",
 		[string] $LinkName="All"
     )
     
     [boolean] 	$bSuccess = $true
 	[string] 	$StatusMessage = "Successfully get remote computers from XenData.conf_b.xml"
     $ComputerList = @()
-	try { 
-		if (Test-Path $XenDataConfPath) { 
-			[XML] $XenDataConf  = Get-Content $XenDataConfPath
-			
+	
+	
+	
+	try 
+	{ 
+		if ($XenDataConfPath -eq "default") 
+		{
+			$defaultPath1 = "C:\Program Files\EducateIT\RaptorServer\conf\XenData2.conf_b.xml"
+			$defaultPath2 = "C:\Program Files\EducateIT\Raptor\conf\XenData2.conf_b.xml"
+			if (Test-Path $defaultPath1) 
+			{ 
+				[XML] $XenDataConf  = Get-Content $defaultPath1
+				
+			}
+			elseif (Test-Path $defaultPath2) 
+			{ 
+				[XML] $XenDataConf  = Get-Content $defaultPath2
+				
+			}
+			else 
+			{
+				throw ($XenDataConfPath + " does not exists!")
+			}
 		}
-		else {
-			throw ($XenDataConfPath + " does not exists!")
+		else 
+		{
+			if (Test-Path $XenDataConfPath) 
+			{ 
+				[XML] $XenDataConf  = Get-Content $XenDataConfPath
+				
+			}
+			else 
+			{
+				throw ($XenDataConfPath + " does not exists!")
+			}
 		}
-
 		$ns = New-Object System.Xml.XmlNamespaceManager($XenDataConf.NameTable)
 		$ns.AddNamespace("ns", $XenDataConf.DocumentElement.NamespaceURI)
 
 		
 		
-		If ($LinkName.toUpper() -eq "ALL") {
+		if ($LinkName.toUpper() -eq "ALL") 
+		{
 			$RemoteComputerList = $XenDataConf.SelectNodes("//ns:Value[@name='RemoteComputerList']", $ns)
 		}
-		else {
+		else 
+		{
 			$Lists = $XenDataConf.Configuration.Module.List
-			foreach ($List in $Lists) {
-				if ($List.name -eq "Links") {
+			foreach ($List in $Lists) 
+			{
+				if ($List.name -eq "Links") 
+				{
 					$Links = $List
 					break
 				}
 			}
-			foreach ($ListEntry in $Links.ListEntry) {
-				if ($ListEntry.Value.name -eq "Name") {
-					if ($ListEntry.Value.innerText -eq $LinkName) {
-						$Link = $ListEntry
-						$RemoteComputerList = $Link.SelectNodes("ns:Value[@name='RemoteComputerList']", $ns)
-						break
-					}
+			foreach ($ListEntry in $Links.ListEntry) 
+			{
+				if ($ListEntry.Value.innerText -eq $LinkName) 
+				{
+					$Link = $ListEntry
+					$RemoteComputerList = $Link.SelectNodes("ns:Value[@name='RemoteComputerList']", $ns)
+					break
 				}
 			}
-			
 		}
 		
-		if ($RemoteComputerList -ne $null) {
-			foreach ($item in $RemoteComputerList) {
+		if ($RemoteComputerList -ne $null) 
+		{
+			foreach ($item in $RemoteComputerList) 
+			{
 				$aRemoteComputers = $item.InnerText.split("`r`n|`r|`n")
-				foreach ($RemoteComputer in $aRemoteComputers) {
+				foreach ($RemoteComputer in $aRemoteComputers) 
+				{
 					$RemoteComputer = $RemoteComputer.Trim()
-					if ($RemoteComputer.Length -ne 0) {
+					if ($RemoteComputer.Length -ne 0) 
+					{
 						$ComputerList += $RemoteComputer
 					}
 				}
 			}
 		}
-		else {
+		else 
+		{
 			Throw "Error, no RemoteComputers found for Link $LinkName!"
 		}
 	}
     
-    catch {
+    catch 
+	{
 		$bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
@@ -595,6 +635,209 @@ function Get-EitPSUnique
     } 
 }
 
+function Get-EitLinkNamesFromXenDataConf {
+<#
+	.	Synopsis
+			Get LinkNams from the XenData.conf_b.xml
+		.Description
+			Get LinkNames from the XenData.conf_b.xml
+		
+		.Parameter XenDataConfPath
+			path to the XenData.conf_b.xml
+			
+		.EXAMPLE
+			Get-EitLinkNamesFromXenDataConf 
+			List the LinkNames from the default XenData config file (C:\Program Files\EducateIT\RaptorServer\conf\XenData2.conf_b.xml / C:\Program Files\EducateIT\Raptor\conf\XenData2.conf_b.xml)
+			
+		.EXAMPLE
+			Get-EitLinkNamesFromXenDataConf -XenDataConfPath "C:\Program Files\EducateIT\RaptorServer\conf\XenData2.conf_b.xml"
+			List the LinkNames from the specified XenData config file
+			
+			
+		.OUTPUTS
+			Success     : True
+			Message		: Successfully get link names from XenData.conf_b.xml
+			LinkNames	: [String[]] LinkName
 
 
+		.NOTES  
+			Copyright: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.0
+			
+			History:
+				V1.0 - 12.04.2023 - M.Trojahn - Initial creation
+				
+	#>	
+	Param(
+        [string] $XenDataConfPath="default"
+    )
+    
+    [boolean] 	$bSuccess = $true
+	[string] 	$StatusMessage = "Successfully get link names from XenData.conf_b.xml"
+    $LinkNameList = @()
+	
+	try 
+	{ 
+		if ($XenDataConfPath -eq "default") 
+		{
+			$defaultPath1 = "C:\Program Files\EducateIT\RaptorServer\conf\XenData2.conf_b.xml"
+			$defaultPath2 = "C:\Program Files\EducateIT\Raptor\conf\XenData2.conf_b.xml"
+			if (Test-Path $defaultPath1) 
+			{ 
+				$XenDataConfPath = $defaultPath1
+				[XML] $XenDataConf  = Get-Content $XenDataConfPath
+				
+			}
+			elseif (Test-Path $defaultPath2) 
+			{ 
+				$XenDataConfPath = $defaultPath2
+				[XML] $XenDataConf  = Get-Content $XenDataConfPath
+				
+			}
+			else 
+			{
+				throw ($XenDataConfPath + " does not exists!")
+			}
+		}
+		else 
+		{
+			if (Test-Path $XenDataConfPath) 
+			{ 
+				[XML] $XenDataConf  = Get-Content $XenDataConfPath
+				
+			}
+			else 
+			{
+				throw ($XenDataConfPath + " does not exists!")
+			}
+		}
+		$ns = New-Object System.Xml.XmlNamespaceManager($XenDataConf.NameTable)
+		$ns.AddNamespace("ns", $XenDataConf.DocumentElement.NamespaceURI)
+		$Lists = $null
+		$Lists = $XenDataConf.Configuration.Module.List
+		if ($Lists -ne $null) 
+		{
+			$Links = $null
+			foreach ($List in $Lists) 
+			{
+				if ($List.name -eq "Links") 
+				{
+					$Links = $List
+					break
+				}
+			}
+			if ($Links -ne $null) 
+			{
+				foreach ($ListEntry in $Links.ListEntry.Value) 
+				{
+					if ($ListEntry.name -eq "Name") 
+					{
+						$LinkNameList += $ListEntry.innerText
+					}
+				}
+			}
+			else
+			{
+				throw "No Links found in $XenDataConfPath, this is not a valid XenData2.conf_b.xml file!"
+			}			
+		}
+		else
+		{
+			throw "No List Module found in $XenDataConfPath, this is not a valid XenData2.conf_b.xml file!"
+		}
+	}
+    catch 
+	{
+		$bSuccess = $false
+		$StatusMessage = $_.Exception.Message
+	}
+  
+    $ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;LinkNames=$LinkNameList})
+    return $ReturnObject
+}
 
+
+function Get-EitLinkNameForBrokerMachine {
+<#
+	.	Synopsis
+			Get LinkName for a broker machine
+		.Description
+			Get LinkName for a broker machine
+		
+		.Parameter MachineName
+			the machine name
+			
+		.EXAMPLE
+			Get-EitLinkNameForBrokerMachine -MachineName MyMachine
+			List the LinkName for the machine MyMachine 
+			
+			
+		.OUTPUTS
+			Success     : True
+			Message		: Successfully get the link name for machine
+			LinkName	: LinkName
+
+
+		.NOTES  
+			Copyright: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.0
+			
+			History:
+				V1.0 - 12.04.2023 - M.Trojahn - Initial creation
+				
+	#>	
+	Param(
+        [string] $MachineName
+    )
+    
+    [boolean] 	$bSuccess = $true
+	[string] 	$StatusMessage = "Successfully get link name for machine $MachineName"
+    $LinkName = $null
+	try 
+	{ 
+		$LinkNamesData = Get-EitLinkNamesFromXenDataConf
+		if ($LinkNamesData.Success -eq "True") 
+		{
+			foreach ($item in $LinkNamesData.LinkNames)
+			{
+				$Brokers = Get-EitRemoteComputersFromXenDataConf -LinkName $item
+				if ($Brokers.Success -eq "True") 
+				{
+					$BrokerMachineInfo = Get-EitBrokerMachines -Brokers $Brokers.RemoteComputers[0]
+					if ($BrokerMachineInfo.Success -eq "True") 
+					{
+						if ($BrokerMachineInfo.MachineList -Match $MachineName)
+						{
+							$LinkName = $item
+							break
+						}
+					}
+					else
+					{
+						throw $BrokerMachineInfo.Message
+					}		
+				}
+				else
+				{
+					throw $Brokers.Message
+				}	
+			}	
+		}
+		else
+		{
+			throw $LinkNamesData.Message
+		}
+		if ($LinkName -eq $null)
+		{
+			throw "LinkName for $MachineName not found!"
+		}
+	}
+	catch 
+	{
+		$bSuccess = $false
+		$StatusMessage = $_.Exception.Message
+	}
+  
+    $ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;LinkName=$LinkName})
+    return $ReturnObject
+}
