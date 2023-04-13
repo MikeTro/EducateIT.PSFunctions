@@ -56,13 +56,13 @@ function New-EitFileLogger {
 	
 	if ($logUTC)
 	{
-		$MyLayout = new-object log4net.Layout.PatternLayout('[%date{yyyy-MM-dd HH:mm:ss.fff} (%utcdate{yyyy-MM-dd HH:mm:ss.fff})] [%level] [%message]%n')
+		$MyLayout = New-Object log4net.Layout.PatternLayout('[%date{yyyy-MM-dd HH:mm:ss.fff} (%utcdate{yyyy-MM-dd HH:mm:ss.fff})] [%level] [%message]%n')
 	}	
 	else 
 	{
-		$MyLayout = new-object log4net.Layout.PatternLayout('[%date{yyyy-MM-dd HH:mm:ss.fff}] [%level] [%message]%n')
+		$MyLayout = New-Object log4net.Layout.PatternLayout('[%date{yyyy-MM-dd HH:mm:ss.fff}] [%level] [%message]%n')
 	}	
-	$RollingFileAppender = new-object log4net.Appender.RollingFileAppender
+	$RollingFileAppender = New-Object log4net.Appender.RollingFileAppender
 	
 	$RollingFileAppender.Layout = $MyLayout
 	$RollingFileAppender.file = $LogFilePath
@@ -71,7 +71,7 @@ function New-EitFileLogger {
 	$RollingFileAppender.Name = "filelog"
 	$RollingFileAppender.StaticLogFileName = $false
 	$RollingFileAppender.PreserveLogFileNameExtension = $true
-	$RollingFileAppender.LockingModel = new-object log4net.Appender.FileAppender+MinimalLock
+	$RollingFileAppender.LockingModel = New-Object log4net.Appender.FileAppender+MinimalLock
 	$RollingFileAppender.DatePattern = "_yyyy-MM-dd"
 	$RollingFileAppender.RollingStyle = "Date"
 	$RollingFileAppender.RollingStyle = "Size"
@@ -85,16 +85,16 @@ function New-EitFileLogger {
 	
 	
 	#Colored console appender initialization - > do not show Debug messages to the console
-	$ColorConsoleAppender = new-object log4net.Appender.ColoredConsoleAppender(([log4net.Layout.ILayout](new-object log4net.Layout.PatternLayout('[%date{yyyy-MM-dd HH:mm:ss.fff}] %message%n'))));
-	$ColorConsoleAppenderDebugCollorScheme=new-object log4net.Appender.ColoredConsoleAppender+LevelColors; $ColorConsoleAppenderDebugCollorScheme.Level=[log4net.Core.Level]::Debug; $ColorConsoleAppenderDebugCollorScheme.ForeColor=[log4net.Appender.ColoredConsoleAppender+Colors]::Green;
+	$ColorConsoleAppender = New-Object log4net.Appender.ColoredConsoleAppender(([log4net.Layout.ILayout](New-Object log4net.Layout.PatternLayout('[%date{yyyy-MM-dd HH:mm:ss.fff}] %message%n'))));
+	$ColorConsoleAppenderDebugCollorScheme=New-Object log4net.Appender.ColoredConsoleAppender+LevelColors; $ColorConsoleAppenderDebugCollorScheme.Level=[log4net.Core.Level]::Debug; $ColorConsoleAppenderDebugCollorScheme.ForeColor=[log4net.Appender.ColoredConsoleAppender+Colors]::Green;
 	$ColorConsoleAppender.AddMapping($ColorConsoleAppenderDebugCollorScheme);
-	$ColorConsoleAppenderInfoCollorScheme=new-object log4net.Appender.ColoredConsoleAppender+LevelColors; $ColorConsoleAppenderInfoCollorScheme.level=[log4net.Core.Level]::Info; $ColorConsoleAppenderInfoCollorScheme.ForeColor=[log4net.Appender.ColoredConsoleAppender+Colors]::White;
+	$ColorConsoleAppenderInfoCollorScheme=New-Object log4net.Appender.ColoredConsoleAppender+LevelColors; $ColorConsoleAppenderInfoCollorScheme.level=[log4net.Core.Level]::Info; $ColorConsoleAppenderInfoCollorScheme.ForeColor=[log4net.Appender.ColoredConsoleAppender+Colors]::White;
 	$ColorConsoleAppender.AddMapping($ColorConsoleAppenderInfoCollorScheme);
-	$ColorConsoleAppenderWarnCollorScheme=new-object log4net.Appender.ColoredConsoleAppender+LevelColors; $ColorConsoleAppenderWarnCollorScheme.level=[log4net.Core.Level]::Warn; $ColorConsoleAppenderWarnCollorScheme.ForeColor=[log4net.Appender.ColoredConsoleAppender+Colors]::Yellow;
+	$ColorConsoleAppenderWarnCollorScheme=New-Object log4net.Appender.ColoredConsoleAppender+LevelColors; $ColorConsoleAppenderWarnCollorScheme.level=[log4net.Core.Level]::Warn; $ColorConsoleAppenderWarnCollorScheme.ForeColor=[log4net.Appender.ColoredConsoleAppender+Colors]::Yellow;
 	$ColorConsoleAppender.AddMapping($ColorConsoleAppenderWarnCollorScheme);
-	$ColorConsoleAppenderErrorCollorScheme=new-object log4net.Appender.ColoredConsoleAppender+LevelColors; $ColorConsoleAppenderErrorCollorScheme.level=[log4net.Core.Level]::Error; $ColorConsoleAppenderErrorCollorScheme.ForeColor=[log4net.Appender.ColoredConsoleAppender+Colors]::Red;
+	$ColorConsoleAppenderErrorCollorScheme=New-Object log4net.Appender.ColoredConsoleAppender+LevelColors; $ColorConsoleAppenderErrorCollorScheme.level=[log4net.Core.Level]::Error; $ColorConsoleAppenderErrorCollorScheme.ForeColor=[log4net.Appender.ColoredConsoleAppender+Colors]::Red;
 	$ColorConsoleAppender.AddMapping($ColorConsoleAppenderErrorCollorScheme);
-	$ColorConsoleAppenderFatalCollorScheme=new-object log4net.Appender.ColoredConsoleAppender+LevelColors; $ColorConsoleAppenderFatalCollorScheme.level=[log4net.Core.Level]::Fatal; $ColorConsoleAppenderFatalCollorScheme.ForeColor=([log4net.Appender.ColoredConsoleAppender+Colors]::HighIntensity -bxor [log4net.Appender.ColoredConsoleAppender+Colors]::Red);
+	$ColorConsoleAppenderFatalCollorScheme=New-Object log4net.Appender.ColoredConsoleAppender+LevelColors; $ColorConsoleAppenderFatalCollorScheme.level=[log4net.Core.Level]::Fatal; $ColorConsoleAppenderFatalCollorScheme.ForeColor=([log4net.Appender.ColoredConsoleAppender+Colors]::HighIntensity -bxor [log4net.Appender.ColoredConsoleAppender+Colors]::Red);
 	$ColorConsoleAppender.AddMapping($ColorConsoleAppenderFatalCollorScheme);
 	$ColorConsoleAppender.ActivateOptions();
 	$ColorConsoleAppender.Threshold = [log4net.Core.Level]::Info;
@@ -115,13 +115,20 @@ function New-EitLogger {
 
 	.Parameter LogFilePath
 		path to logfile
-		
+		if omitted only a console logger will be created
+	
 	.Parameter log4netPath
 		Path to the log4Net DLL, default $PSScriptRoot
 		
 	.Parameter logUTC
 		Log also the UTC TimeStamp
-
+		
+	.Parameter enableRolling	
+		enable rolling file logs
+	
+	.Parameter maxSize
+		max size of file
+		
 	.EXAMPLE
 		$MyLogger = New-EitLogger -LogFilePath MyLogFilePath 
 		Create a file logger
@@ -130,7 +137,11 @@ function New-EitLogger {
 		$MyLogger = New-EitLogger 
 		Create a console logger	
 		
-	
+	.EXAMPLE
+		$MyLogger = New-EitLogger -LogFilePath MyLogFilePath -enableRolling $false
+		Create a non rolling file logger
+		
+		
 	.NOTES  
 		Copyright	: 	(c) 2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
 		Version		:	1.0
@@ -140,10 +151,11 @@ function New-EitLogger {
 			
 	#>	
 	Param ( 
-        [Parameter(Mandatory=$false)] [string] $LogFilePath,
+        [Parameter(Mandatory=$false)] [string] $logFilePath,
 		[Parameter(Mandatory=$false)] [string] $log4netPath = $PSScriptRoot + "\log4net.dll",
-		[Parameter(Mandatory=$false)] [boolean] $logUTC = $false
-        
+		[Parameter(Mandatory=$false)] [boolean] $logUTC = $false,
+		[Parameter(Mandatory=$false)] [boolean] $enableRolling = $true,
+		[Parameter(Mandatory=$false)] [string] $maxSize = "10MB"
     ) 
 	
 	[void][Reflection.Assembly]::LoadFile($log4netPath);
@@ -151,53 +163,89 @@ function New-EitLogger {
 	
 	if ($logUTC) 
 	{
-		$MyLayout = new-object log4net.Layout.PatternLayout('[%date{yyyy-MM-dd HH:mm:ss.fff} (%utcdate{yyyy-MM-dd HH:mm:ss.fff})] [%level] [%message]%n')
+		$MyLayout = New-Object log4net.Layout.PatternLayout('[%date{yyyy-MM-dd HH:mm:ss.fff} (%utcdate{yyyy-MM-dd HH:mm:ss.fff})] [%level] [%message]%n')
 	}	
 	else 
 	{
-		$MyLayout = new-object log4net.Layout.PatternLayout('[%date{yyyy-MM-dd HH:mm:ss.fff}] [%level] [%message]%n')
+		$MyLayout = New-Object log4net.Layout.PatternLayout('[%date{yyyy-MM-dd HH:mm:ss.fff}] [%level] [%message]%n')
 	}	
 
 	if ($LogFilePath.length -ne 0) 
 	{
-		$RollingFileAppender = new-object log4net.Appender.RollingFileAppender
-		$RollingFileAppender.Layout = $MyLayout
-		$RollingFileAppender.file = $LogFilePath
-		$RollingFileAppender.MaximumFileSize = "10MB"
-		$RollingFileAppender.AppendToFile = $true
-		$RollingFileAppender.Name = "filelog"
-		$RollingFileAppender.StaticLogFileName = $false
-		$RollingFileAppender.PreserveLogFileNameExtension = $true
-		$RollingFileAppender.LockingModel = new-object log4net.Appender.FileAppender+MinimalLock
-		$RollingFileAppender.DatePattern = "_yyyy-MM-dd"
-		$RollingFileAppender.RollingStyle = "Date"
-		$RollingFileAppender.RollingStyle = "Size"
-		$RollingFileAppender.RollingStyle = "Composite"
-		$RollingFileAppender.MaxSizeRollBackups = "100"
-		
-		
-		$RollingFileAppender.Threshold = [log4net.Core.Level]::All
-		$RollingFileAppender.ActivateOptions()
-		[log4net.Config.BasicConfigurator]::Configure($RollingFileAppender)
+		if ($enableRolling) 
+		{
+			$RollingFileAppender = New-Object log4net.Appender.RollingFileAppender
+			$RollingFileAppender.Layout = $MyLayout
+			$RollingFileAppender.file = $LogFilePath
+			$RollingFileAppender.AppendToFile = $true
+			$RollingFileAppender.Name = "filelog"
+			$RollingFileAppender.StaticLogFileName = $false
+			$RollingFileAppender.PreserveLogFileNameExtension = $true
+			$RollingFileAppender.LockingModel = New-Object log4net.Appender.FileAppender+MinimalLock
+			$RollingFileAppender.MaximumFileSize = $maxSize
+			$RollingFileAppender.DatePattern = "_yyyy-MM-dd"
+			$RollingFileAppender.RollingStyle = "Date"
+			$RollingFileAppender.RollingStyle = "Size"
+			$RollingFileAppender.RollingStyle = "Composite"
+			$RollingFileAppender.MaxSizeRollBackups = "100"
+			$RollingFileAppender.Threshold = [log4net.Core.Level]::All
+			$RollingFileAppender.ActivateOptions()
+			[log4net.Config.BasicConfigurator]::Configure($RollingFileAppender)
+		}
+		else 
+		{
+			$FileAppender = New-Object log4net.Appender.FileAppender
+			$FileAppender.Layout = $MyLayout
+			$FileAppender.Threshold = [log4net.Core.Level]::All
+			$FileAppender.file = $LogFilePath
+			$FileAppender.AppendToFile = $true
+			$FileAppender.Name = "filelog"
+			$FileAppender.LockingModel = New-Object log4net.Appender.FileAppender+MinimalLock
+			$FileAppender.ActivateOptions()
+			[log4net.Config.BasicConfigurator]::Configure($FileAppender)
+		}
 	}
 	
-	#Colored console appender initialization - > do not show Debug messages to the console
-	$ColorConsoleAppender = new-object log4net.Appender.ColoredConsoleAppender(([log4net.Layout.ILayout](new-object log4net.Layout.PatternLayout('[%date{yyyy-MM-dd HH:mm:ss.fff}] %message%n'))));
-	$ColorConsoleAppenderDebugCollorScheme=new-object log4net.Appender.ColoredConsoleAppender+LevelColors; $ColorConsoleAppenderDebugCollorScheme.Level=[log4net.Core.Level]::Debug; $ColorConsoleAppenderDebugCollorScheme.ForeColor=[log4net.Appender.ColoredConsoleAppender+Colors]::Green;
-	$ColorConsoleAppender.AddMapping($ColorConsoleAppenderDebugCollorScheme);
-	$ColorConsoleAppenderInfoCollorScheme=new-object log4net.Appender.ColoredConsoleAppender+LevelColors; $ColorConsoleAppenderInfoCollorScheme.level=[log4net.Core.Level]::Info; $ColorConsoleAppenderInfoCollorScheme.ForeColor=[log4net.Appender.ColoredConsoleAppender+Colors]::White;
-	$ColorConsoleAppender.AddMapping($ColorConsoleAppenderInfoCollorScheme);
-	$ColorConsoleAppenderWarnCollorScheme=new-object log4net.Appender.ColoredConsoleAppender+LevelColors; $ColorConsoleAppenderWarnCollorScheme.level=[log4net.Core.Level]::Warn; $ColorConsoleAppenderWarnCollorScheme.ForeColor=[log4net.Appender.ColoredConsoleAppender+Colors]::Yellow;
-	$ColorConsoleAppender.AddMapping($ColorConsoleAppenderWarnCollorScheme);
-	$ColorConsoleAppenderErrorCollorScheme=new-object log4net.Appender.ColoredConsoleAppender+LevelColors; $ColorConsoleAppenderErrorCollorScheme.level=[log4net.Core.Level]::Error; $ColorConsoleAppenderErrorCollorScheme.ForeColor=[log4net.Appender.ColoredConsoleAppender+Colors]::Red;
-	$ColorConsoleAppender.AddMapping($ColorConsoleAppenderErrorCollorScheme);
-	$ColorConsoleAppenderFatalCollorScheme=new-object log4net.Appender.ColoredConsoleAppender+LevelColors; $ColorConsoleAppenderFatalCollorScheme.level=[log4net.Core.Level]::Fatal; $ColorConsoleAppenderFatalCollorScheme.ForeColor=([log4net.Appender.ColoredConsoleAppender+Colors]::HighIntensity -bxor [log4net.Appender.ColoredConsoleAppender+Colors]::Red);
-	$ColorConsoleAppender.AddMapping($ColorConsoleAppenderFatalCollorScheme);
-	$ColorConsoleAppender.ActivateOptions();
-	$ColorConsoleAppender.Threshold = [log4net.Core.Level]::Info;
-	[log4net.Config.BasicConfigurator]::Configure($ColorConsoleAppender);
+	$ColorConsoleAppender = New-Object log4net.Appender.ColoredConsoleAppender
+	$MyColorConsoleLayout = New-Object log4net.Layout.PatternLayout('[%date{yyyy-MM-dd HH:mm:ss.fff}] %message%n')
+	$ColorConsoleAppender.Layout = $MyColorConsoleLayout
 	
-	$EitLogger = [log4net.LogManager]::GetLogger("root");
+	# debug
+	$ColorConsoleAppenderDebugCollorScheme 	= New-Object log4net.Appender.ColoredConsoleAppender+LevelColors
+	$ColorConsoleAppenderDebugCollorScheme.Level = [log4net.Core.Level]::Debug
+	$ColorConsoleAppenderDebugCollorScheme.ForeColor = [log4net.Appender.ColoredConsoleAppender+Colors]::Green
+	$ColorConsoleAppender.AddMapping($ColorConsoleAppenderDebugCollorScheme)
+	
+	# info
+	$ColorConsoleAppenderInfoCollorScheme = New-Object log4net.Appender.ColoredConsoleAppender+LevelColors
+	$ColorConsoleAppenderInfoCollorScheme.level	= [log4net.Core.Level]::Info
+	$ColorConsoleAppenderInfoCollorScheme.ForeColor = [log4net.Appender.ColoredConsoleAppender+Colors]::White
+	$ColorConsoleAppender.AddMapping($ColorConsoleAppenderInfoCollorScheme)
+	
+	# warn
+	$ColorConsoleAppenderWarnCollorScheme = New-Object log4net.Appender.ColoredConsoleAppender+LevelColors
+	$ColorConsoleAppenderWarnCollorScheme.level		= [log4net.Core.Level]::Warn
+	$ColorConsoleAppenderWarnCollorScheme.ForeColor	= ([log4net.Appender.ColoredConsoleAppender+Colors]::HighIntensity -bxor [log4net.Appender.ColoredConsoleAppender+Colors]::Yellow)
+	$ColorConsoleAppender.AddMapping($ColorConsoleAppenderWarnCollorScheme)
+		
+	# error
+	$ColorConsoleAppenderErrorCollorScheme 	= New-Object log4net.Appender.ColoredConsoleAppender+LevelColors
+	$ColorConsoleAppenderErrorCollorScheme.level		= [log4net.Core.Level]::Error
+	$ColorConsoleAppenderErrorCollorScheme.ForeColor	= [log4net.Appender.ColoredConsoleAppender+Colors]::Red
+	$ColorConsoleAppender.AddMapping($ColorConsoleAppenderErrorCollorScheme)
+		
+	# fatal
+	$ColorConsoleAppenderFatalCollorScheme 	= New-Object log4net.Appender.ColoredConsoleAppender+LevelColors
+	$ColorConsoleAppenderFatalCollorScheme.level		= [log4net.Core.Level]::Fatal
+	$ColorConsoleAppenderFatalCollorScheme.ForeColor	= ([log4net.Appender.ColoredConsoleAppender+Colors]::HighIntensity -bxor [log4net.Appender.ColoredConsoleAppender+Colors]::Red)
+	$ColorConsoleAppender.AddMapping($ColorConsoleAppenderFatalCollorScheme)
+	
+	$ColorConsoleAppender.ActivateOptions()
+	#Colored console appender initialization - > do not show Debug messages to the console (Threshold)
+	$ColorConsoleAppender.Threshold = [log4net.Core.Level]::Info
+	[log4net.Config.BasicConfigurator]::Configure($ColorConsoleAppender)
+
+	$EitLogger = [log4net.LogManager]::GetLogger("root")
 	return $EitLogger 
 }
 
