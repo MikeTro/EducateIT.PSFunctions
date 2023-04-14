@@ -25,6 +25,10 @@
 #			V1.9.3	- 20.03.2023 - M. Trojahn - add Get-EitPSUnique in ScriptFunctions.ps1
 #												add Get-EitBrokerMachine in CitrixFunctions.ps1	
 #			V1.9.4	- 29.03.2023 - M. Trojahn - add Get-EitADUser in ADFunctions.ps1
+#			V1.9.5	- 13.04.2023 - M. Trojahn - add Get-EitBrokerSessions, Stop-EitAllBrokerSessionOnMachine in CitrixFunctions.ps1
+#												add New-EitLogger in LogFunctions.ps1
+#												Test also for the new raptor server path in Get-EitRemoteComputersFromXenDataConf
+#									 			Add Get-EitLinkNamesFromXenDataConf, Get-EitLinkNameForBrokerMachine in ScriptFunctions.ps1
 #
 ###############################################################################################
 
@@ -34,7 +38,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '1.9.4'
+ModuleVersion = '1.9.5'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
