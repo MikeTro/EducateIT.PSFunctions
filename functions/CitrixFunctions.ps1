@@ -146,10 +146,10 @@ function Get-EitBrokerMachines {
 	
 	function Make-EITSBrokerMachineData($DNSName, $MachineName, $SessionSupport, $OSType) {
 		$out = New-Object psobject
-		$out | add-member -type noteproperty -name DNSName $DNSName
-		$out | add-member -type noteproperty -name MachineName $MachineName
-		$out | add-member -type noteproperty -name SessionSupport $SessionSupport
-		$out | add-member -type noteproperty -name OSType $OSType
+		$out | add-member -type noteproperty -name DNSName $DNSName.ToLower()
+		$out | add-member -type noteproperty -name MachineName $MachineName.ToLower()
+		$out | add-member -type noteproperty -name SessionSupport $SessionSupport.ToString().ToLower()
+		$out | add-member -type noteproperty -name OSType $OSType.ToLower()
 		$out
 	}
 
@@ -2406,7 +2406,7 @@ function Stop-EitAllBrokerSessionOnMachine {
 			$EnableLog = $true
 		}
 				
-		if (($EnableLog = $false) -OR ($EnableDebug)) 
+		if (($EnableLog = $false) -AND ($EnableDebug)) 
 		{
 			$EnableDebug = $false
 			throw "Logger parameter is missing!"
