@@ -21,6 +21,10 @@
 #  V1.10 - 21.12.2022 - M.Trojahn - Remove MaxRecordCount from Stop-EitBrokerSession 
 #  V1.11 - 20.03.2023 - M.Trojahn - add Get-EitBrokerMachines
 #  V1.12 - 12.04.2023 - M.Trojahn - add Get-EitBrokerSessions, Stop-EitAllBrokerSessionOnMachine
+#
+#
+#
+#
 
 
 function Get-EitFarmServers {
@@ -2347,19 +2351,34 @@ function Get-EitBrokerSessions {
 function Stop-EitAllBrokerSessionOnMachine {
 <#
        .SYNOPSIS
-             This functions stops all sesion on a given machine.
+             This functions stops all sesions on a given machine.
 
        .DESCRIPTION
-             Use this function to stop all sesion on a given machine.
+             Use this function to stop all sesions on a given machine.
 
        .PARAMETER  Broker
              The broker where you wish to execute the action
 
        .PARAMETER  MachineName
-             The machine name
+             The machine name, must be in format MyDomain\MyMachineName
+		
+		.PARAMETER Logger
+			The EducateIT FileLogger object
+			Has to be created before with the New-EitLogger command
+			
+		.PARAMETER EnableDebug
+			Enables the debug log
+			Only available if logging is activated via Logger paramter
 
        .EXAMPLE
-             Stop-EitAllBrokerSessionOnMachine -Broker MyBroker -MachineName MyMachineName
+             Stop-EitAllBrokerSessionOnMachine -Broker MyBroker -MachineName MyDomain\MyMachineName
+			 
+		.EXAMPLE
+             Stop-EitAllBrokerSessionOnMachine -Broker MyBroker -MachineName MyDomain\MyMachineName -Logger MyEitLogger
+			 	 
+		.OUTPUTS
+			Success	: True
+			Message	: Successfully stopped machine sessions
        
        .NOTES  
 			Copyright	: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch 
@@ -2372,43 +2391,84 @@ function Stop-EitAllBrokerSessionOnMachine {
 
     param (
 		[Parameter(Mandatory=$True)][string]$Broker,
-		[Parameter(Mandatory=$True)][string]$MachineName
+		[Parameter(Mandatory=$True)][string]$MachineName,
+		[Parameter(Mandatory=$false)] [Object[]] $Logger,
+		[Parameter(Mandatory=$false)] [Switch] $EnableDebug
 	)
        
 	try {
-		$startTime = Get-Date
-		Write-Host "connecting to Citrix DDC $DDC"
-		$PSSession = New-PSSession -ComputerName $DDC
-		Write-Host "loading Citrix Broker Snapins..."
-		$rc = Invoke-Command -Session $PSSession -ScriptBlock { Add-PSSnapin Citrix.Broker.*}
-		Write-Host "reading session infomation for session $uid..."
-		
-		$TimeOut = 600
-		$i = 0
-		$MachineSessions = Invoke-Command -Session $PSSession -ScriptBlock {param($MachineName) Get-BrokerSession -MachineName $MachineName -MaxRecordCount 10000 -ErrorAction SilentlyContinue} -ArgumentList $MachineName 
-		if ($MachineSessions -ne $null) 
+		$PSSession = $null
+		$EnableLog = $false
+		$bSuccess = $false
+		$StatusMessage = "Error while stopping machine sessions!"
+		if ($Logger -ne $null)
 		{
-			Write-Host "Stopping sessions..."
-			foreach ($MachineSession in $MachineSessions) 
+			$EnableLog = $true
+		}
+				
+		if (($EnableLog = $false) -OR ($EnableDebug)) 
+		{
+			$EnableDebug = $false
+			throw "Logger parameter is missing!"
+		}
+		
+		
+		if ($EnableDebug) 
+		{ 
+			$Logger.Debug("Start function Stop-EitAllBrokerSessionOnMachine") 
+			$Logger.Debug("Broker: $Broker") 
+			$Logger.Debug("MachineName: $MachineName") 
+			$Logger.Debug("EnableDebug: EnableDebug") 
+			$Logger.Debug($Logger) 
+			
+		}
+		if ($MachineName.Contains("\"))
+		{
+			if ($EnableLog) {$Logger.Info("connecting to Citrix broker $Broker")}
+			$PSSession = New-PSSession -ComputerName $Broker
+			if ($EnableLog) {$Logger.Info("loading Citrix Broker Snapins...")}
+			$rc = Invoke-Command -Session $PSSession -ScriptBlock { Add-PSSnapin Citrix.Broker.*}
+			if ($EnableLog) {$Logger.Info("reading sessions on machine $MachineName...")}
+			
+			$MachineSessions = Invoke-Command -Session $PSSession -ScriptBlock {param($MachineName) Get-BrokerSession -MachineName $MachineName -MaxRecordCount 10000 -ErrorAction SilentlyContinue} -ArgumentList $MachineName 
+			if ($EnableDebug) { $Logger.Debug($MachineSessions) }
+			if ($MachineSessions -ne $null) 
 			{
-				$rc = Invoke-Command -Session $PSSession -ScriptBlock {param($MachineSession) Stop-BrokerSession -InputObject $MachineSession -ErrorAction SilentlyContinue} -ArgumentList $MachineSession
+				if ($EnableLog) {$Logger.Info("   stopping sessions...")}
+				foreach ($MachineSession in $MachineSessions) 
+				{
+					if ($EnableLog) {$Logger.Info("      stopping session for user $($MachineSession.UserName)")}
+					if ($EnableDebug) { $Logger.Debug($MachineSession) }
+					$rc = Invoke-Command -Session $PSSession -ScriptBlock {param($MachineSession) Stop-BrokerSession -InputObject $MachineSession -ErrorAction SilentlyContinue} -ArgumentList $MachineSession
+					if ($EnableDebug) { $Logger.Debug($rc) }
+				}
+				$bSuccess = $true
+				$StatusMessage = "Successfully stopped machine sessions"
+			}	
+			else {
+				Throw "ERROR, no session found on machine  $MachineName"
 			}
-			
-			
 		}	
 		else {
-			Throw "ERROR, no session found on machine  $MachineName"
-	    }
+			Throw "MachineName must be in the format DomainName\MachineName"
+		}	
 	}
 	catch {
-	    Throw $_.Exception.Message
+	    $bSuccess = $false
+		$StatusMessage = $_.Exception.Message
 	}
 	finally {
-		Remove-PSSession -Session $PSSession
+		if ($PSSession -ne $null) 
+		{
+			if (Get-PSSession -Id $PSSession.Id -ErrorAction SilentlyContinue) 
+			{
+				Remove-PSSession -Session $PSSession
+			}
+		}	
+		if ($EnableDebug) { $Logger.Debug("End function Stop-EitAllBrokerSessionOnMachine") }
 	}
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage})
+	return $ReturnObject
 }
-
-
-
 
 
