@@ -2237,7 +2237,7 @@ function Stop-EitBrokerSession {
 					Write-Host $message
 			}
 			else {
-				Throw "EEROR: TimeOut ($TimeOut s) reached, while stopping session!"
+				Throw "ERROR: TimeOut ($TimeOut s) reached, while stopping session!"
 			}
 		}	
 		else {
@@ -2351,16 +2351,16 @@ function Get-EitBrokerSessions {
 function Stop-EitAllBrokerSessionOnMachine {
 <#
        .SYNOPSIS
-             This functions stops all sesions on a given machine.
+            This functions stops all sesions on a given machine.
 
        .DESCRIPTION
-             Use this function to stop all sesions on a given machine.
+            Use this function to stop all sesions on a given machine.
 
        .PARAMETER  Broker
-             The broker where you wish to execute the action
+            The broker where you wish to execute the action
 
        .PARAMETER  MachineName
-             The machine name, must be in format MyDomain\MyMachineName
+            The machine name, must be in format MyDomain\MyMachineName
 		
 		.PARAMETER Logger
 			The EducateIT FileLogger object
@@ -2371,10 +2371,10 @@ function Stop-EitAllBrokerSessionOnMachine {
 			Only available if logging is activated via Logger paramter
 
        .EXAMPLE
-             Stop-EitAllBrokerSessionOnMachine -Broker MyBroker -MachineName MyDomain\MyMachineName
+            Stop-EitAllBrokerSessionOnMachine -Broker MyBroker -MachineName MyDomain\MyMachineName
 			 
 		.EXAMPLE
-             Stop-EitAllBrokerSessionOnMachine -Broker MyBroker -MachineName MyDomain\MyMachineName -Logger MyEitLogger
+            Stop-EitAllBrokerSessionOnMachine -Broker MyBroker -MachineName MyDomain\MyMachineName -Logger MyEitLogger
 			 	 
 		.OUTPUTS
 			Success	: True
@@ -2383,17 +2383,15 @@ function Stop-EitAllBrokerSessionOnMachine {
        .NOTES  
 			Copyright	: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch 
 			Version		: 1.0
-			History:
-				V1.0 - 12.04.2023 - M.Trojahn - Initial creation  
-				
-
+			History		:
+							V1.0 - 12.04.2023 - M.Trojahn - Initial creation  
 #>
 
     param (
-		[Parameter(Mandatory=$True)][string]$Broker,
-		[Parameter(Mandatory=$True)][string]$MachineName,
-		[Parameter(Mandatory=$false)] [Object[]] $Logger,
-		[Parameter(Mandatory=$false)] [Switch] $EnableDebug
+		[Parameter(Mandatory=$True)] 	[string]$Broker,
+		[Parameter(Mandatory=$True)] 	[string]$MachineName,
+		[Parameter(Mandatory=$false)] 	[Object[]] $Logger,
+		[Parameter(Mandatory=$false)] 	[Switch] $EnableDebug
 	)
        
 	try {
@@ -2401,17 +2399,17 @@ function Stop-EitAllBrokerSessionOnMachine {
 		$EnableLog = $false
 		$bSuccess = $false
 		$StatusMessage = "Error while stopping machine sessions!"
+		
 		if ($Logger -ne $null)
 		{
 			$EnableLog = $true
 		}
-				
-		if (($EnableLog = $false) -AND ($EnableDebug)) 
+			
+		if (($EnableLog -eq $false) -And ($EnableDebug)) 
 		{
 			$EnableDebug = $false
 			throw "Logger parameter is missing!"
 		}
-		
 		
 		if ($EnableDebug) 
 		{ 
@@ -2470,5 +2468,3 @@ function Stop-EitAllBrokerSessionOnMachine {
 	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage})
 	return $ReturnObject
 }
-
-
