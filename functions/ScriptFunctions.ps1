@@ -120,29 +120,43 @@ function Test-EitPort {
 		[parameter(Mandatory = $false)][int]$Timeout=10
 	)
     $ErrorActionPreference = "SilentlyContinue"
-	try 	{
+	$failed = $true
+	try
+ 	{
 		$tcpclient = new-Object system.Net.Sockets.TcpClient
 		$iar = $tcpclient.BeginConnect($ComputerName,$Port,$null,$null)
 		$wait = $iar.AsyncWaitHandle.WaitOne($Timeout,$false)
-		if(!$wait) 		{
+		if (!$wait)
+ 		{
 			$tcpclient.Close()
 			return $false
 		}
-		else {
+		else 
+		{
 			$Error.Clear()
-			$tcpclient.EndConnect($iar) | out-Null
-			if($Error[0]) 			{
+			$tcpclient.EndConnect($iar) | Out-Null
+			if ($Error[0])
+ 			{
 				$failed = $true
 			}
-			else {
+			else 
+			{
 				$failed = $false
 			}
 			$tcpclient.Close()
 		}   
-		if($failed){return $false}else{return $true}
+		if ($failed) 
+		{
+			return $false
+		}
+		else
+		{
+			return $true
+		}
 	}
-	catch [System.SystemException] {
-		Write-Host $($Error[0])
+	catch [System.SystemException]
+	{
+		return $false
 	}
 }
 
