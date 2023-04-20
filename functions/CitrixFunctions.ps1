@@ -2,7 +2,7 @@
 # CitrixFunctions.ps1
 # ===========================================================================
 # (c)2023 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.12
+# Version 1.13
 #
 # Citrix Functions for Raptor Scripts
 #
@@ -21,6 +21,7 @@
 #  V1.10 - 21.12.2022 - M.Trojahn - Remove MaxRecordCount from Stop-EitBrokerSession 
 #  V1.11 - 20.03.2023 - M.Trojahn - add Get-EitBrokerMachines
 #  V1.12 - 12.04.2023 - M.Trojahn - add Get-EitBrokerSessions, Stop-EitAllBrokerSessionOnMachine
+#  V1.13 - 20.04.2023 - M.Trojahn - add Stop-EitAllBrokerSessionForUser
 #
 #
 #
@@ -2444,7 +2445,7 @@ function Stop-EitAllBrokerSessionOnMachine {
 				$StatusMessage = "Successfully stopped machine sessions"
 			}	
 			else {
-				Throw "ERROR, no session found on machine  $MachineName"
+				Throw "ERROR, no sessions found on machine $MachineName"
 			}
 		}	
 		else {
@@ -2468,3 +2469,135 @@ function Stop-EitAllBrokerSessionOnMachine {
 	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage})
 	return $ReturnObject
 }
+
+function Stop-EitAllBrokerSessionForUser {
+<#
+       .SYNOPSIS
+            This functions stops all sesions for a given user.
+
+       .DESCRIPTION
+            Use this function to stop all sesions for a given user.
+
+       .PARAMETER  Broker
+            The broker where you wish to execute the action
+
+       .PARAMETER  UserName
+            The user name, must be in format MyDomain\MyUserName
+		
+		.PARAMETER Logger
+			The EducateIT FileLogger object
+			Has to be created before with the New-EitLogger command
+			
+		.PARAMETER EnableDebug
+			Enables the debug log
+			Only available if logging is activated via Logger paramter
+
+       .EXAMPLE
+            Stop-EitAllBrokerSessionForUser -Broker MyBroker -UserName MyDomain\MyUserName
+			 
+		.EXAMPLE
+            Stop-EitAllBrokerSessionForUser -Broker MyBroker -UserName MyDomain\MyUserName -Logger MyEitLogger
+			 	 
+		.OUTPUTS
+			Success	: True
+			Message	: Successfully stopped user sessions
+       
+       .NOTES  
+			Copyright	: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch 
+			Version		: 1.0
+			History		:
+							V1.0 - 20.04.2023 - M.Trojahn - Initial creation  
+#>
+
+    param (
+		[Parameter(Mandatory=$True)] 	[string[]]$Brokers,
+		[Parameter(Mandatory=$True)] 	[string]$UserName,
+		[Parameter(Mandatory=$false)] 	[Object[]] $Logger,
+		[Parameter(Mandatory=$false)] 	[Switch] $EnableDebug
+	)
+       
+	try {
+		$PSSession = $null
+		$EnableLog = $false
+		$bSuccess = $false
+		$StatusMessage = "Error while stopping user sessions!"
+		
+		if ($Logger -ne $null)
+		{
+			$EnableLog = $true
+		}
+			
+		if (($EnableLog -eq $false) -And ($EnableDebug)) 
+		{
+			$EnableDebug = $false
+			throw "Logger parameter is missing!"
+		}
+		
+		if ($EnableDebug) 
+		{ 
+			$Logger.Debug("Start function Stop-EitAllBrokerSessionForUser") 
+			$Logger.Debug("Broker: $Broker") 
+			$Logger.Debug("UserName: $UserName") 
+			$Logger.Debug("EnableDebug: EnableDebug") 
+			$Logger.Debug($Logger) 
+			
+		}
+		if ($UserName.Contains("\"))
+		{
+			foreach ($Broker in $Brokers) 
+			{
+				if (Test-EitPort -Server $Broker -Port 5985 -Timeout "1000")
+				{				
+					if ($EnableLog) {$Logger.Info("connecting to Citrix broker $Broker")}
+					$PSSession = New-PSSession -ComputerName $Broker
+					if ($EnableLog) {$Logger.Info("loading Citrix Broker Snapins...")}
+					$rc = Invoke-Command -Session $PSSession -ScriptBlock { Add-PSSnapin Citrix.Broker.*}
+					if ($EnableLog) {$Logger.Info("reading sessions for user $UserName...")}
+				
+					$BrokerSessions = Invoke-Command -Session $PSSession -ScriptBlock {param($UserName) Get-BrokerSession -MaxRecordCount 10000 | Where {$_.UserName -eq $UserName} -ErrorAction SilentlyContinue} -ArgumentList $UserName 
+					if ($EnableDebug) { $Logger.Debug($BrokerSessions) }
+					if ($BrokerSessions -ne $null) 
+					{
+						if ($EnableLog) {$Logger.Info("   stopping sessions...")}
+						foreach ($BrokerSession in $BrokerSessions) 
+						{
+							if ($EnableLog) {$Logger.Info("      stopping session for user $($BrokerSession.UserName)")}
+							if ($EnableDebug) { $Logger.Debug($BrokerSessions) }
+							$rc = Invoke-Command -Session $PSSession -ScriptBlock {param($BrokerSession) Stop-BrokerSession -InputObject $BrokerSession -ErrorAction SilentlyContinue} -ArgumentList $BrokerSession
+						}
+						$bSuccess = $true
+						$StatusMessage = "Successfully stopped user sessions"
+					}	
+					else {
+						Throw "ERROR, no sessions found for user $UserName"
+					}
+				}	
+				else 
+				{
+					if ($EnableLog) {$Logger.Error("ERROR, broker $Broker is not reachable via WinRM!")}
+				}
+			}	
+		}	
+		else {
+			Throw "UserName must be in the format DomainName\UserName"
+		}	
+	}
+	catch {
+	    $bSuccess = $false
+		$StatusMessage = $_.Exception.Message
+	}
+	finally {
+		if ($PSSession -ne $null) 
+		{
+			if (Get-PSSession -Id $PSSession.Id -ErrorAction SilentlyContinue) 
+			{
+				Remove-PSSession -Session $PSSession
+			}
+		}	
+		if ($EnableDebug) { $Logger.Debug("End function Stop-EitAllBrokerSessionForUser") }
+	}
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage})
+	return $ReturnObject
+}
+
+
