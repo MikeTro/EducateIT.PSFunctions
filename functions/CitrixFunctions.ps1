@@ -2257,7 +2257,7 @@ function Stop-EitBrokerSession {
 function Get-EitBrokerSessions {
 	<#
 	 .Synopsis
-			Get citrix sessions
+			Get Citrix sessions
 		.Description
 			List Citrix sessions
 		
@@ -2276,10 +2276,11 @@ function Get-EitBrokerSessions {
 			
 		.NOTES  
 			Copyright	:	(c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Version		:	1.1
 			
 			History:
 				V1.0 - 12.04.2023 - M.Trojahn - Initial creation
+				V1.1 - 25.04.2023 - M.Trojahn - working with HashTable because Get-EitPSUnique is too slow
 	 #>	
 	Param 
 		(	
@@ -2288,6 +2289,7 @@ function Get-EitBrokerSessions {
 		) 
 		
 	$SessionList = @()
+	$SessionHash = @{}
 	$bSuccess = $false
 	$StatusMessage = "Error while reading session list!"
 	
@@ -2318,12 +2320,15 @@ function Get-EitBrokerSessions {
 				{
 					$BrokerSessions = Invoke-Command -Session $Session -ScriptBlock {Get-BrokerSession -MaxRecordCount 10000 | Select UserName, Uid, UserUPN, MachineName, SessionState} 
 				}
-				
+				Remove-PSSession -Session $Session
 				foreach ($BrokerSession in $BrokerSessions) 
 				{
-					$SessionList += Make-EITSBrokerSessionData -UserName $BrokerSession.UserName -MachineName $BrokerSession.MachineName -SessionState $BrokerSession.SessionState -Uid $BrokerSession.Uid -UserUPN $BrokerSession.UserUPN
-				}	
-				Remove-PSSession -Session $Session
+					$EITSBrokerSessionData = Make-EITSBrokerSessionData -UserName $BrokerSession.UserName -MachineName $BrokerSession.MachineName -SessionState $BrokerSession.SessionState -Uid $BrokerSession.Uid -UserUPN $BrokerSession.UserUPN
+					if (!($SessionHash.ContainsKey($EITSBrokerSessionData.Uid)))
+					{
+						$SessionHash.add($EITSBrokerSessionData.Uid, $EITSBrokerSessionData)
+					}
+				}
 				$StatusMessage = "Successfully read session list..."
 				$bSuccess = $true
 				
@@ -2340,8 +2345,12 @@ function Get-EitBrokerSessions {
 		$StatusMessage = $_.Exception.Message
 	}
 	
-	$UniqueSessionList = $SessionList | Get-EitPSUnique | Sort UserUPN
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;SessionList=$UniqueSessionList})
+	foreach ($item in $SessionHash.Values)
+	{
+		$SessionList += $item
+	}
+	$SessionList = $SessionList | Sort UserUPN
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;SessionList=$SessionList})
 	return $ReturnObject
 }
 
