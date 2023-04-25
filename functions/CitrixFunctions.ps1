@@ -2578,7 +2578,7 @@ function Stop-EitAllBrokerSessionForUser {
 						$StatusMessage = "Successfully stopped user sessions"
 					}	
 					else {
-						Throw "ERROR, no sessions found for user $UserName"
+						if ($EnableLog) {$Logger.Error("No sessions found for user $UserName")
 					}
 				}	
 				else 
