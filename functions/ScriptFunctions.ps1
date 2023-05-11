@@ -2,7 +2,7 @@
 # ScriptFunctions.ps1
 # ===========================================================================
 # (c)2023 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.10
+# Version 1.11
 #
 # Useful Script functions
 # History:
@@ -18,6 +18,7 @@
 #	V1.09 - 20.03.2023 - M.Trojahn - Get-EitPSUnique
 #	V1.10 - 13.04.2023 - M.Trojahn - Test also for the new raptor server path in Get-EitRemoteComputersFromXenDataConf
 #									 Add Get-EitLinkNamesFromXenDataConf, Get-EitLinkNameForBrokerMachine
+#	V1.11 - 11.05.2023 - M.Trojahn - Add Raptor to Server ValidateSet in function New-EitEncryptedPassword
 #	
 #	
 # ===========================================================================
@@ -524,15 +525,16 @@ function New-EitEncryptedPassword
 			 New-EitEncryptedPassword -Server ActionsServer -Password MyPassword
 		
 		.NOTES  
-			Copyright: (c)2022 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Copyright: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.1
 			
 			History:
 				V1.0 - 03.08.2022 - M.Trojahn - Initial creation
+				V1.1 - 11.05.2023 - M.Trojahn - Add Raptor to Server ValidateSet
 			
 	#>	
 	param (
-		[Parameter(Mandatory=$true)] [ValidateSet("ActionsServer","RaptorServer", "ProcessMonitorCollector")] [string]$Server,
+		[Parameter(Mandatory=$true)] [ValidateSet("ActionsServer", "RaptorServer", "Raptor", "ProcessMonitorCollector")] [string]$Server,
 		[Parameter(Mandatory=$true)] [string]$Password
 	)
 	try
