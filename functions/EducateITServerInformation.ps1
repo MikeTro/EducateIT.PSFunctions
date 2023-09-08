@@ -142,7 +142,7 @@ function Get-EitServerServiceInfo
 {
 <#
  .Synopsis
-		Get info about an EducateIT Srever Service
+		Get info about an EducateIT Server Service
     .Description
 		Use this function to get the Versin & License Information from a EducateIT Server Service
 	

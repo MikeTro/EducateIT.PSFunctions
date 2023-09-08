@@ -2,7 +2,7 @@
 # ScriptFunctions.ps1
 # ===========================================================================
 # (c)2023 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.11
+# Version 1.12
 #
 # Useful Script functions
 # History:
@@ -19,6 +19,7 @@
 #	V1.10 - 13.04.2023 - M.Trojahn - Test also for the new raptor server path in Get-EitRemoteComputersFromXenDataConf
 #									 Add Get-EitLinkNamesFromXenDataConf, Get-EitLinkNameForBrokerMachine
 #	V1.11 - 11.05.2023 - M.Trojahn - Add Raptor to Server ValidateSet in function New-EitEncryptedPassword
+#	V1.12 - 07.09.2023 - M.Trojahn - Add UTF8 Encoding in function New-EitEncryptedPassword
 #	
 #	
 # ===========================================================================
@@ -526,11 +527,12 @@ function New-EitEncryptedPassword
 		
 		.NOTES  
 			Copyright: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.1
+			Version		:	1.2
 			
 			History:
 				V1.0 - 03.08.2022 - M.Trojahn - Initial creation
 				V1.1 - 11.05.2023 - M.Trojahn - Add Raptor to Server ValidateSet
+				V1.2 - 07.09.2023 - M.Trojahn - Add UTF8 Encoding
 			
 	#>	
 	param (
@@ -551,7 +553,7 @@ function New-EitEncryptedPassword
 			Start-Process -FilePath $exe -ArgumentList $arguments -Wait -RedirectStandardOutput $PWFile -RedirectStandardError $MyErrorFile
 			if (Test-Path $MyErrorFile)
 			{
-				$EncryptedPassword = Get-Content -Path $PWFile
+				$EncryptedPassword = Get-Content -Path $PWFile -Encoding UTF8
 				<# Remove-Item $PWFile -Force #>
 				if ($EncryptedPassword -eq $null) 
 				{

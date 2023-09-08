@@ -676,8 +676,6 @@ function Get-EitADUserLastLogon
 			if (Test-EitPort -ComputerName $DC.HostName -port 389)
 			{
 				$User = Get-ADUser $UserName -Server $DC.HostName| Get-ADObject -Properties lastLogon 
-				$User.LastLogon
-				$DC.HostName
 				if ($User.LastLogon -gt $Time)
 				{
 					$Time = $User.LastLogon

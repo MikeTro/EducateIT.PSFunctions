@@ -29,6 +29,7 @@
 #												add New-EitLogger in LogFunctions.ps1
 #												Test also for the new raptor server path in Get-EitRemoteComputersFromXenDataConf
 #									 			Add Get-EitLinkNamesFromXenDataConf, Get-EitLinkNameForBrokerMachine in ScriptFunctions.ps1
+#			V1.9.6	- 07.09.2023 - M. Trojahn - Add UTF8 Encoding in function New-EitEncryptedPassword in ScriptFunctions.ps1
 #
 ###############################################################################################
 
@@ -38,7 +39,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '1.9.5'
+ModuleVersion = '1.9.6'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
