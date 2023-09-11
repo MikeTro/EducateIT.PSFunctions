@@ -1,8 +1,8 @@
 #
 # CitrixDaaSFunctions.ps1
 # ===========================================================================
-# (c)2022 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.0
+# (c)2023 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
+# Version 1.1
 #
 # Citrix Daas (Citrix Cloud) functions for Raptor Scripts
 #
@@ -11,7 +11,7 @@
 #									add Get-EitCitrixDaaSMe, Get-EitCitrixDaaSSessionsInSite, Get-EitCitrixDaaSSession, 
 #										Stop-EitCitrixDaaSSession, Get-EitCitrixDaaSMachinesInSite, Get-EitCitrixDaaSbearerToken
 #										Get-EitCitrixDaaSMachine, Restart-EitCitrixDaaSMachine, Stop-EitCitrixDaaSMachine, Start-EitCitrixDaaSMachine
-#
+#   V1.0 - 11.09.2023 - M.Trojahn - Add UseBasicParsing in function Get-EitCitrixDaaSbearerToken
 #
 #
 # ===========================================================================
@@ -377,11 +377,12 @@ function Get-EitCitrixDaaSbearerToken {
 			Get-EitCitrixDaaSbearerToken -clientId MyClientID -clientSecret MyClientSecret
 			
 		.NOTES  
-			Copyright: (c)2022 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Copyright: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.1
 			
 			History:
 				V1.0 - 19.10.2022 - M.Trojahn - Initial creation
+				V1.0 - 11.09.2023 - M.Trojahn - add -UseBasicParsing
 	#>
     param (
         [Parameter(Mandatory=$true)]
@@ -406,7 +407,7 @@ function Get-EitCitrixDaaSbearerToken {
 		}
 		
 		# Obtain bearer token from authorization server
-		$response = Invoke-WebRequest $tokenUrl -Method POST -Body $Body
+		$response = Invoke-WebRequest $tokenUrl -Method POST -Body $Body -UseBasicParsing
 		
 		$token  = $response.Content | ConvertFrom-Json
 		$bearerToken = $token.access_token

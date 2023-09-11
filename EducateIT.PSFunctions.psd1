@@ -30,6 +30,7 @@
 #												Test also for the new raptor server path in Get-EitRemoteComputersFromXenDataConf
 #									 			Add Get-EitLinkNamesFromXenDataConf, Get-EitLinkNameForBrokerMachine in ScriptFunctions.ps1
 #			V1.9.6	- 07.09.2023 - M. Trojahn - Add UTF8 Encoding in function New-EitEncryptedPassword in ScriptFunctions.ps1
+#			V1.9.7	- 11.09.2023 - M. Trojahn - Add UseBasicParsing in function Get-EitCitrixDaaSbearerToken in CitrixDaaSFunctions.ps1
 #
 ###############################################################################################
 
@@ -39,7 +40,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '1.9.6'
+ModuleVersion = '1.9.7'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
