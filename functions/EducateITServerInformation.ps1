@@ -156,7 +156,7 @@ function Get-EitServerServiceInfo
 		the path to the server executable, for example "C:\Program Files\EducateIT\RaptorServer\RaptorServer.exe"	
 		
 	.EXAMPLE
-		Get-EitServerInfo -Name "RaptorServer" -ServerExePath "C:\Program Files\EducateIT\RaptorServer\RaptorServer.exe"
+		Get-EitServerServiceInfo -Name "RaptorServer" -ServerExePath "C:\Program Files\EducateIT\Raptor\Raptor.exe"
 		
 	.OUTPUTS
 		ComputerName   	: RAPTOR19
@@ -170,12 +170,13 @@ function Get-EitServerServiceInfo
 		ExpiresInDays  	: 165
 
 	.NOTES  
-		Copyright: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-		Version		:	1.1
+		Copyright: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+		Version		:	1.2
 		
 		History:
             V1.0 - 07.11.2021 - M.Trojahn - Initial creation
 			V1.1 - 17.11.2021 - M.Trojahn - Add Name parameter, required for reporting
+			V1.2 - 12.12.2023 - M.Trojahn - only use remoting if it is required
 			
     #>	
 	param(
@@ -183,10 +184,8 @@ function Get-EitServerServiceInfo
 		[parameter(Mandatory = $true)][string]$Name,
 		[parameter(Mandatory = $true)][string]$ServerExePath
 	)
-	
-	$ServerInfo = Invoke-Command -ComputerName $ComputerName -ScriptBlock {
-		$Name = $args[0]
-		$ServerExePath = $args[1]
+	if ($ComputerName -eq $env:ComputerName) 
+	{
 		if (Test-Path $ServerExePath)
 		{
 			$tmpOutPut = New-TemporaryFile
@@ -198,7 +197,8 @@ function Get-EitServerServiceInfo
 				$LicensedTo = $tmp[1]
 				
 			}
-			else {
+			else 
+			{
 				$LicensedTo = "n/a"
 			}
 			Remove-Item $tmpOutPut
@@ -219,9 +219,48 @@ function Get-EitServerServiceInfo
 		{
 			$ServerInfo += ([pscustomobject]@{ComputerName=$env:ComputerName;Name=$Name;ProductName="";ProductVersion="";LicensedTo="";ValidLicense="";Status="";IsTrial="";ExpiresInDays=""})
 		}
-		$ServerInfo
-	} -ArgumentList $Name, $ServerExePath
-		
+	}
+	else 
+	{
+		$ServerInfo = Invoke-Command -ComputerName $ComputerName -ScriptBlock {
+			$Name = $args[0]
+			$ServerExePath = $args[1]
+			if (Test-Path $ServerExePath)
+			{
+				$tmpOutPut = New-TemporaryFile
+				$dummy = Start-Process -FilePath $ServerExePath -ArgumentList "--license-status" -RedirectStandardOutput $tmpOutPut -PassThru -Wait
+				$LicData = Get-Content $tmpOutPut
+				if ($LicData -match "Licensed to:")
+				{
+					$tmp = $LicData[0] -split ': '
+					$LicensedTo = $tmp[1]
+					
+				}
+				else 
+				{
+					$LicensedTo = "n/a"
+				}
+				Remove-Item $tmpOutPut
+				
+				$tmpOutPut = New-TemporaryFile
+				$dummy = Start-Process -FilePath $ServerExePath -ArgumentList "--license-status-json" -RedirectStandardOutput $tmpOutPut -PassThru -Wait
+					
+				$LicData = try { Get-Content $tmpOutPut | ConvertFrom-Json } catch { $null }
+				if ($LicData -eq $null)
+				{
+					$LicData = ([pscustomobject]@{LicensedTo="n/a";valid_license="n/a";Status="n/a";is_trial="n/a";expires_in_days="n/a"})
+				}
+				Remove-Item $tmpOutPut
+				$VersionInfo = $(Get-Item -Path $ServerExePath).VersionInfo
+				$ServerInfo += ([pscustomobject]@{ComputerName=$env:ComputerName;Name=$Name;ProductName=$VersionInfo.ProductName;ProductVersion=$VersionInfo.ProductVersion;LicensedTo=$LicensedTo;ValidLicense=$LicData.valid_license;Status=$LicData.status;IsTrial=$LicData.is_trial;ExpiresInDays=$LicData.expires_in_days})
+			}
+			else
+			{
+				$ServerInfo += ([pscustomobject]@{ComputerName=$env:ComputerName;Name=$Name;ProductName="";ProductVersion="";LicensedTo="";ValidLicense="";Status="";IsTrial="";ExpiresInDays=""})
+			}
+			$ServerInfo
+		} -ArgumentList $Name, $ServerExePath
+	}	
 	return ([pscustomobject]@{ComputerName=$ServerInfo.ComputerName;Name=$ServerInfo.Name;ProductName=$ServerInfo.ProductName;ProductVersion=$ServerInfo.ProductVersion;LicensedTo=$ServerInfo.LicensedTo;ValidLicense=$ServerInfo.ValidLicense;Status=$ServerInfo.Status;IsTrial=$ServerInfo.IsTrial;ExpiresInDays=$ServerInfo.ExpiresInDays})
 }
 
