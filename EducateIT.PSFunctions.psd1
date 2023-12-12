@@ -31,6 +31,7 @@
 #									 			Add Get-EitLinkNamesFromXenDataConf, Get-EitLinkNameForBrokerMachine in ScriptFunctions.ps1
 #			V1.9.6	- 07.09.2023 - M. Trojahn - Add UTF8 Encoding in function New-EitEncryptedPassword in ScriptFunctions.ps1
 #			V1.9.7	- 11.09.2023 - M. Trojahn - Add UseBasicParsing in function Get-EitCitrixDaaSbearerToken in CitrixDaaSFunctions.ps1
+#			V1.9.8	- 12.12.2023 - M. Trojahn - Add logger to stop-eitbrokersession, only use remoting i f it is required in Get-EitServerServiceInfo
 #
 ###############################################################################################
 
@@ -40,7 +41,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '1.9.7'
+ModuleVersion = '1.9.8'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
