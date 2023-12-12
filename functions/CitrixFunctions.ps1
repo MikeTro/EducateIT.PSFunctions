@@ -2,7 +2,7 @@
 # CitrixFunctions.ps1
 # ===========================================================================
 # (c)2023 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.13
+# Version 1.14
 #
 # Citrix Functions for Raptor Scripts
 #
@@ -22,7 +22,7 @@
 #  V1.11 - 20.03.2023 - M.Trojahn - add Get-EitBrokerMachines
 #  V1.12 - 12.04.2023 - M.Trojahn - add Get-EitBrokerSessions, Stop-EitAllBrokerSessionOnMachine
 #  V1.13 - 20.04.2023 - M.Trojahn - add Stop-EitAllBrokerSessionForUser
-#
+#  V1.14 - 12.12.2023 - M.Trojahn - add Logger to Stop-EitBrokerSession
 #
 #
 #
@@ -2193,41 +2193,117 @@ function Stop-EitBrokerSession {
 
        .PARAMETER  UID
              The UID of the session
+			 
+		.Parameter Logger
+			The EducateIT FileLogger object
+			Has to be created before with the New-EitFileLogger command
+
+		.Parameter EnableDebug
+			Enables the debug log	
 
        .EXAMPLE
-             Stop-EitBrokerSession -DDC MyBroker -UID MyUID
+            Stop-EitBrokerSession -DDC MyBroker -UID MyUID
+			 
+		.EXAMPLE
+            Stop-EitBrokerSession -DDC MyBroker -UID MyUID -Logger MyLogger -EnableDebug $ture 
        
        .NOTES  
-			Copyright	: (c)2022 by EducateIT GmbH - http://educateit.ch - info@educateit.ch 
-			Version		: 1.1
+			Copyright	: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch 
+			Version		: 1.2
 			History:
 				V1.0 - 14.08.2019 - M.Trojahn - Initial creation  
 				V1.1 - 21.12.2022 - M.Trojahn - Remove MaxRecordCount 
+				V1.2 - 12.12.2023 - M.Trojahn - add Logger 
 
 #>
 
     param (
-		[Parameter(Mandatory=$True)][string]$DDC,
-		[Parameter(Mandatory=$True)][string]$UID
+		[Parameter(Mandatory=$true)][string] $DDC,
+		[Parameter(Mandatory=$true)][string] $UID,
+		[Parameter(Mandatory=$false)][int] $TimeOut = 600,
+		[Parameter(Mandatory=$false)] [Object[]] $Logger,
+		[Parameter(Mandatory=$false)] [boolean] $EnableDebug
 	)
        
 	try {
-		$startTime = Get-Date
-		Write-Host "connecting to Citrix DDC $DDC"
-		$PSSession = New-PSSession -ComputerName $DDC
-		Write-Host "loading Citrix Broker Snapins..."
-		$rc = Invoke-Command -Session $PSSession -ScriptBlock { Add-PSSnapin Citrix.Broker.*}
-		Write-Host "reading session infomation for session $uid..."
 		
-		$TimeOut = 600
+		$EnableLog = $false
+		$bSuccess = $false
+		$StatusMessage = "Error while stopping user sessions!"
+		
+		if ($Logger -ne $null)
+		{
+			$EnableLog = $true
+		}
+			
+		if (($EnableLog -eq $false) -And ($EnableDebug)) 
+		{
+			$EnableDebug = $false
+			throw "Logger parameter is missing!"
+		}
+		
+		if ($EnableDebug) 
+		{ 
+			$Logger.Debug("Start function Stop-EitBrokerSession") 
+			$Logger.Debug("DDC: $DCC") 
+			$Logger.Debug("UID: $UID") 
+			$Logger.Debug("EnableDebug: EnableDebug") 
+			$Logger.Debug($Logger) 
+			
+		}
+		
+		$startTime = Get-Date
+		
+		if ($Logger -eq $null)
+		{
+			Write-Host "connecting to Citrix DDC $DDC"
+		}
+		else 
+		{
+			$Logger.Info("connecting to Citrix DDC $DDC")
+		}
+		
+		$PSSession = New-PSSession -ComputerName $DDC
+		if ($Logger -eq $null)
+		{
+			Write-Host "loading Citrix Broker Snapins..."
+		}	
+		else 
+		{
+			$Logger.Info("loading Citrix Broker Snapins...")
+		}	
+		$rc = Invoke-Command -Session $PSSession -ScriptBlock { Add-PSSnapin Citrix.Broker.*}
+		if ($Logger -eq $null)
+		{
+			Write-Host "reading session infomation for session $uid..."
+		}
+		else 
+		{
+			$Logger.Info("reading session infomation for session $uid...")
+		}
+		
 		$i = 0
 		$UserSession = Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID -ErrorAction SilentlyContinue} -ArgumentList $UID 
 		If ($UserSession -ne $null) {
-			Write-Host "stopping session..."
+			if ($Logger -eq $null)
+			{
+				Write-Host "stopping session..."
+			}
+			else 
+			{
+				$Logger.Info("stopping session...")
+			}	
 			$rc = Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID | Stop-BrokerSession -ErrorAction SilentlyContinue} -ArgumentList $UID
 			while (($(Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID -ErrorAction SilentlyContinue} -ArgumentList $UID) -ne $null) -and ($i -lt $TimeOut)) {
 				Start-Sleep -Milliseconds 1000
-				Write-Host "   Session is still alive, waiting for session to stop ($i / $TimeOut)..." 
+				if ($Logger -eq $null)
+				{
+					Write-Host "   Session is still alive, waiting for session to stop ($i / $TimeOut)..." 
+				}
+				else 
+				{
+					$Logger.Info("   Session is still alive, waiting for session to stop ($i / $TimeOut)...")
+				}	
 				$i++
 			}
 			$UserSession = Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID -ErrorAction SilentlyContinue} -ArgumentList $UID
@@ -2235,18 +2311,25 @@ function Stop-EitBrokerSession {
 			if ($UserSession -eq $null) {
 					$LogoffTime = $endTime - $startTime
 					$message = "Session successfully stopped in " + $LogoffTime.Minutes + "m " + $LogoffTime.Seconds + "s"
-					Write-Host $message
+					if ($Logger -eq $null)
+					{
+						Write-Host $message
+					}
+					else 
+					{
+						$Logger.Info($message)
+					}		
 			}
 			else {
-				Throw "ERROR: TimeOut ($TimeOut s) reached, while stopping session!"
+				throw "ERROR: TimeOut ($TimeOut s) reached, while stopping session!"
 			}
 		}	
 		else {
-			Throw "ERROR, no session found with UID $UID"
+			throw "ERROR, no session found with UID $UID"
 	    }
 	}
 	catch {
-	    Throw $_.Exception.Message
+	    throw $_.Exception.Message
 	}
 	finally {
 		Remove-PSSession -Session $PSSession
