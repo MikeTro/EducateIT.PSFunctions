@@ -2,7 +2,7 @@
 # CitrixFunctions.ps1
 # ===========================================================================
 # (c)2023 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.14
+# Version 1.15
 #
 # Citrix Functions for Raptor Scripts
 #
@@ -23,6 +23,7 @@
 #  V1.12 - 12.04.2023 - M.Trojahn - add Get-EitBrokerSessions, Stop-EitAllBrokerSessionOnMachine
 #  V1.13 - 20.04.2023 - M.Trojahn - add Stop-EitAllBrokerSessionForUser
 #  V1.14 - 12.12.2023 - M.Trojahn - add Logger to Stop-EitBrokerSession
+#  V1.15 - 20.12.2023 - M.Trojahn - add full site data to Get-EitSiteInfo
 #
 #
 #
@@ -457,11 +458,12 @@ function Get-EitSiteInfo {
 
 			
 		.NOTES  
-			Copyright: (c)2019 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Copyright: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.1
 			
 			History:
 				V1.0 - 18.11.2019 - M.Trojahn - Initial creation
+				V1.1 - 20.12.2023 - M.Trojahn - add full site info 
 	#>
 	Param (	
 		[Parameter(Mandatory=$true)]  [string[]]$DDCAddress
@@ -476,13 +478,14 @@ function Get-EitSiteInfo {
 		foreach ($item in $DDCAddress) {
 			$Session = New-PSSession -ComputerName $item -ErrorAction stop 
 			Invoke-Command -Session $Session -ScriptBlock {Add-PSSnapin citrix*} -ErrorAction stop
-			$SiteName = (Invoke-Command -Session $Session -ScriptBlock {Get-BrokerSite}).Name
+			#$SiteName = (Invoke-Command -Session $Session -ScriptBlock {Get-BrokerSite}).Name
+			$CTXSite = Invoke-Command -Session $Session -ScriptBlock {Get-BrokerSite}
 			$Controllers = Invoke-Command -Session $Session -ScriptBlock {Get-BrokerController}
 			foreach ($Controller in $Controllers) {
 				$ControllerInfo += ([pscustomobject]@{Controller=$Controller.DNSName;ControllerVersion=$Controller.ControllerVersion})
 			}
 			
-			$SiteInfo = ([pscustomobject]@{SiteName=$SiteName;Controller=$ControllerInfo})
+			$SiteInfo = ([pscustomobject]@{SiteName=$CTXSite.Name;SiteData=$CTXSite;Controller=$ControllerInfo})
 			$SiteInfos += $SiteInfo
 			$SiteInfo = $null
 			Remove-PSSession -Session $Session

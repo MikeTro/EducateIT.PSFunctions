@@ -2,7 +2,7 @@
 # EducateITServerInformation.ps1
 # ===========================================================================
 # (c)2021 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.1
+# Version 1.2
 #
 # Get the Versions from the executables
 # History:
@@ -10,7 +10,7 @@
 #	V1.1 - 07.11.2021 - M.Trojahn - renamed from EducateITServerVersions.ps1 to EducateITServerInformation.ps1
 #   								add Get-EitServerServiceInfo
 #
-#	
+#	V1.2 - 12.12.2023 - M.Trojahn - only use remoting if it is required in function Get-EitServerServiceInfo
 # ===========================================================================
 
 
