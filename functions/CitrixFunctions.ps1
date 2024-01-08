@@ -2248,7 +2248,7 @@ function Stop-EitBrokerSession {
 		if ($EnableDebug) 
 		{ 
 			$Logger.Debug("Start function Stop-EitBrokerSession") 
-			$Logger.Debug("DDC: $DCC") 
+			$Logger.Debug("DDC: $DDC") 
 			$Logger.Debug("UID: $UID") 
 			$Logger.Debug("EnableDebug: EnableDebug") 
 			$Logger.Debug($Logger) 
