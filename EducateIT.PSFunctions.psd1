@@ -33,6 +33,7 @@
 #			V1.9.7	- 11.09.2023 - M. Trojahn - Add UseBasicParsing in function Get-EitCitrixDaaSbearerToken in CitrixDaaSFunctions.ps1
 #			V1.9.8	- 12.12.2023 - M. Trojahn - Add logger to stop-eitbrokersession, only use remoting if it is required in Get-EitServerServiceInfo
 #					  20.12.2023 - M. Trojahn - Add add full site data to Get-EitSiteInfo
+#			V2.0.0	- 18.03.2023 - M. Trojahn - Add RDSFunctions.ps1 (Get-EitWTSSessionId & Get-EitWTSSessionInformation) 
 #
 ###############################################################################################
 
@@ -42,7 +43,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '1.9.8'
+ModuleVersion = '2.0.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -111,7 +112,8 @@ NestedModules = @(
     '.\functions\SetupFunctions.ps1',
 	'.\functions\EducateITStatisticServerFunctions.ps1'
 	'.\functions\CitrixDaaSFunctions.ps1',
-	'.\functions\ProcessMonitorFunctions.ps1'
+	'.\functions\ProcessMonitorFunctions.ps1',
+	'.\functions\RDSFunctions.ps1'
 )
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
