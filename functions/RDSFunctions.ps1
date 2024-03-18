@@ -14,29 +14,7 @@
 #
 
 
-
 #requires -version 3
-<#
-    Use WTSAPi32.dll to get sessions
-
-    Some code adapted from https://www.pinvoke.net/default.aspx/wtsapi32.wtsenumeratesessions
-
-    https://docs.microsoft.com/en-us/windows/win32/api/wtsapi32/nf-wtsapi32-wtsenumeratesessionsw
-
-    https://docs.microsoft.com/en-us/windows/win32/api/wtsapi32/nf-wtsapi32-wtsquerysessioninformationw
-
-    @guyrleech 2018
-
-    Modification History:
-
-    21/01/19  GRL Changed Get-WTSSessionInformation to take array of computer names
-    28/01/19  GRL Added WTSClientInfo
-    30/01/20  GRL Fixed bug causing duplicate sessions
-    04/02/20  GRL Added session state field
-    27/01/21  GRL Added WTSClientInfo call to WTSQuerySessionInformation()
-	
-	https://github.com/guyrleech/Microsoft/blob/master/WTSApi.ps1
-#>
 
 Add-Type -ErrorAction Stop -TypeDefinition @'
     using System;
