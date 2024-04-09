@@ -34,6 +34,8 @@
 #			V1.9.8	- 12.12.2023 - M. Trojahn - Add logger to stop-eitbrokersession, only use remoting if it is required in Get-EitServerServiceInfo
 #					  20.12.2023 - M. Trojahn - Add add full site data to Get-EitSiteInfo
 #			V2.0.0	- 18.03.2023 - M. Trojahn - Add RDSFunctions.ps1 (Get-EitWTSSessionId & Get-EitWTSSessionInformation) 
+#			V2.0.1	- 09.04.2024 - M. Trojahn - return $FileIsLocked = $false if file does not exists in function Test-EITFileIsLocked in VHDFunctions.ps1
+#
 #
 ###############################################################################################
 
@@ -43,7 +45,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '2.0.0'
+ModuleVersion = '2.0.1'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()

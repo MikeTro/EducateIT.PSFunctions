@@ -1,8 +1,8 @@
 #
 # VHDFunctions.ps1
 # ===========================================================================
-# (c)2021 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.5
+# (c)2024 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
+# Version 1.6
 #
 # VDH Functions for Raptor Scripts
 #
@@ -16,6 +16,8 @@
 #									Add function Dismount-EitVHD
 #									Use Mount-EitVHD & Dismount-EitVHD in Resize-EitVHD
 #   V1.5 - 05.05.2021 - M.Trojahn - Add New-EitVHD, add NoDriveLetter parameter to function Mount-EitVHD and in function Resize-EitVHD
+#   V1.6 - 09.04.2024 - M.Trojahn - return $FileIsLocked = $false if file does not exists in function Test-EITFileIsLocked
+
 
 function Test-EITFileIsLocked {
     <#
@@ -29,12 +31,13 @@ function Test-EITFileIsLocked {
         Test-EITFileIsLocked -Path MyVDH.vhdx
 		
 	.NOTES  
-		Copyright: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-		Version		:	1.1
+		Copyright	: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+		Version		: 1.2
 		
 		History:
             V1.0 - 01.06.2020 - M.Trojahn - Initial creation
 			V1.1 - 03.05.2021 - M.Trojahn - Supress error message
+			V1.2 - 09.04.2024 - M.Trojahn - return $FileIsLocked = $false if file does not exists
     #>
     param (
         [parameter(Mandatory = $true)]
@@ -43,23 +46,33 @@ function Test-EITFileIsLocked {
 	$FileIsLocked = $false
 	$originalEAP = $ErrorActionPreference;
     $ErrorActionPreference = "ignore"
-    $oFile = New-Object System.IO.FileInfo $Path
-	
-	try {
-		$oStream = $oFile.Open([System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+	if (Test-Path $Path) 
+	{
+		$oFile = New-Object System.IO.FileInfo $Path
 		
-	} 
-	catch {
-		$FileIsLocked = $true
+		try 
+		{
+			$oStream = $oFile.Open([System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+		} 
+		catch 
+		{
+			$FileIsLocked = $true
+		}
+		$ErrorActionPreference = $originalEAP
+		if ($oStream) 
+		{
+			$oStream.Close()
+			$FileIsLocked = $false
+		}
+		else 
+		{
+		   $FileIsLocked = $true
+		}
 	}
-	$ErrorActionPreference = $originalEAP
-    if ($oStream) {
-        $oStream.Close()
-		$FileIsLocked = $false
-    }
-    else {
-       $FileIsLocked = $true
-    }
+	else 
+	{
+	   $FileIsLocked = $false
+	} 
 	
 	return $FileIsLocked
 }
