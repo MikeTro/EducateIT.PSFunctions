@@ -35,7 +35,8 @@
 #					  20.12.2023 - M. Trojahn - Add add full site data to Get-EitSiteInfo
 #			V2.0.0	- 18.03.2023 - M. Trojahn - Add RDSFunctions.ps1 (Get-EitWTSSessionId & Get-EitWTSSessionInformation) 
 #			V2.0.1	- 09.04.2024 - M. Trojahn - return $FileIsLocked = $false if file does not exists in function Test-EITFileIsLocked in VHDFunctions.ps1
-#
+#			V2.0.2	- 19.04.2024 - M. Trojahn - fix wrong client_id & client_secret variable declaration in function Get-EitCitrixDaaSbearerToken in CitrixDaaSFunctions.ps1
+#			V2.0.3  - 22.05.2024 - M. Trojahn - check if $OSType = $null in Get-EitBrokerMachines in CitrixFunctiond
 #
 ###############################################################################################
 
@@ -45,7 +46,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '2.0.1'
+ModuleVersion = '2.0.3'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
