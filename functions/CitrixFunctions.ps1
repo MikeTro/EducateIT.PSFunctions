@@ -24,7 +24,7 @@
 #  V1.13 - 20.04.2023 - M.Trojahn - add Stop-EitAllBrokerSessionForUser
 #  V1.14 - 12.12.2023 - M.Trojahn - add Logger to Stop-EitBrokerSession
 #  V1.15 - 20.12.2023 - M.Trojahn - add full site data to Get-EitSiteInfo
-#
+#  V1.16 - 22.05.2024 - M.Trojahn - check if $OSType = $null in Get-EitBrokerMachines
 #
 #
 
@@ -132,11 +132,12 @@ function Get-EitBrokerMachines {
 			
 			
 		.NOTES  
-			Copyright	:	(c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Copyright	:	(c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.1
 			
 			History:
 				V1.0 - 20.03.2023 - M.Trojahn - Initial creation
+				V1.1 - 22.05.2024 - M.Trojahn - check if $OSType = $null 
 	 #>	
 	Param 
 		(	[Parameter(Mandatory=$true)]  [string[]]$Brokers
@@ -151,7 +152,14 @@ function Get-EitBrokerMachines {
 		$out | add-member -type noteproperty -name DNSName $DNSName.ToLower()
 		$out | add-member -type noteproperty -name MachineName $MachineName.ToLower()
 		$out | add-member -type noteproperty -name SessionSupport $SessionSupport.ToString().ToLower()
-		$out | add-member -type noteproperty -name OSType $OSType.ToLower()
+		if ($OSType -ne $null) 
+		{
+			$out | add-member -type noteproperty -name OSType $OSType.ToLower()
+		}
+		else 
+		{
+			$out | add-member -type noteproperty -name OSType "n/a"
+		}
 		$out
 	}
 
