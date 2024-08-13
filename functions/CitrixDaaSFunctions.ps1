@@ -1,8 +1,8 @@
 #
 # CitrixDaaSFunctions.ps1
 # ===========================================================================
-# (c)2023 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.1
+# (c)2024 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
+# Version 1.3
 #
 # Citrix Daas (Citrix Cloud) functions for Raptor Scripts
 #
@@ -11,25 +11,27 @@
 #									add Get-EitCitrixDaaSMe, Get-EitCitrixDaaSSessionsInSite, Get-EitCitrixDaaSSession, 
 #										Stop-EitCitrixDaaSSession, Get-EitCitrixDaaSMachinesInSite, Get-EitCitrixDaaSbearerToken
 #										Get-EitCitrixDaaSMachine, Restart-EitCitrixDaaSMachine, Stop-EitCitrixDaaSMachine, Start-EitCitrixDaaSMachine
-#   V1.0 - 11.09.2023 - M.Trojahn - Add UseBasicParsing in function Get-EitCitrixDaaSbearerToken
+#   V1.1 - 11.09.2023 - M.Trojahn - Add UseBasicParsing in function Get-EitCitrixDaaSbearerToken
+#	V1.2 - 19.04.2024 - M.Trojahn - fix wrong client_id & client_secret variable declaration in function Get-EitCitrixDaaSbearerToken
+#	V1.3 - 13.08.2024 - M.Trojahn - Use paging Get-EitCitrixDaaSSessionsInSite & Get-EitCitrixDaaSMachinesInSite
 #
 #
 # ===========================================================================
 
 function Get-EitCitrixDaaSMe {
 	<#
-		.Synopsis
+		.SYNOPSIS
 			get information about the logged on citrix DaaS user
-		.Description
+		.DESCRIPTION
 			get information about the logged on citrix DaaS user
 		
-		.Parameter bearerToken
+		.PARAMETER bearerToken
 			the bearerToken
 			
-		.Parameter customerId
+		.PARAMETER customerId
 			the customerId	
 			
-		.Parameter endPoint
+		.PARAMETER endPoint
 			the endPoint, aka https://api-us.cloud.com
 			
 		.EXAMPLE
@@ -78,22 +80,25 @@ function Get-EitCitrixDaaSMe {
 
 function Get-EitCitrixDaaSSessionsInSite {
 <#
-		.Synopsis
+		.SYNOPSIS
 			List sessions in Citrix DaaS site
-		.Description
+		.DESCRIPTION
 			List sessions in Citrix DaaS site
 		
-		.Parameter bearerToken
+		.PARAMETER bearerToken
 			the bearerToken
 			
-		.Parameter customerId
+		.PARAMETER customerId
 			the customerId	
 		
-		.Parameter siteId
+		.PARAMETER siteId
 			the siteId			
 			
-		.Parameter endPoint
+		.PARAMETER endPoint
 			the endPoint, aka https://api-us.cloud.com
+			
+		.PARAMETER maxRecordCountLimit
+			The maximum record count, should not be greater than 1000
 			
 		.EXAMPLE
 			Get-EitCitrixDaaSSessionsInSite -customerId MycustomerId -bearerToken MybearerToken -siteId MySiteID
@@ -102,11 +107,13 @@ function Get-EitCitrixDaaSSessionsInSite {
 
 			
 		.NOTES  
-			Copyright: (c)2022 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.1
 			
 			History:
 				V1.0 - 19.10.2022 - M.Trojahn - Initial creation
+				V1.1 - 13.08.2024 - M.Trojahn - Use paging for querying more than 1000 objects
+												https://developer-docs.citrix.com/en-us/citrix-daas-service-apis/citrix-daas-rest-apis/how-to-use-paging-to-query-many-objects-through-multiple-api-calls.html
 	#>		
     param (
         [Parameter(Mandatory=$true)]
@@ -116,9 +123,12 @@ function Get-EitCitrixDaaSSessionsInSite {
         [Parameter(Mandatory=$true)]
         [string] $bearerToken,
 		[Parameter(Mandatory=$false)]
-		[string] $endPoint="https://api-us.cloud.com"	
+		[string] $endPoint="https://api-us.cloud.com",
+		[Parameter(Mandatory=$false)]
+		[ValidateRange(1,1000)]
+		[string] $maxRecordCountLimit="1000"	
     )
-    $requestUri = $endPoint + "/cvad/manage/Sessions"
+    $requestUri = $endPoint + "/cvad/manage/Sessions?limit=$maxRecordCountLimit"
 	$headers = @{
         "Accept" = "application/json";
         "Authorization" = "CWSAuth Bearer=$bearerToken";
@@ -131,7 +141,14 @@ function Get-EitCitrixDaaSSessionsInSite {
 	try 
 	{
 		$response = Invoke-RestMethod -Uri $requestUri -Method GET -Headers $headers -UseBasicParsing
-    }
+	    while ($response.ContinuationToken -ne $null)
+		{
+			$requestUriContinue = $requestUri + "&continuationtoken=" + $response.ContinuationToken
+			$responsePage = Invoke-RestMethod -Uri $requestUriContinue -Method GET -Headers $headers
+			$response.Items += $responsePage.Items
+			$response.ContinuationToken = $responsePage.ContinuationToken
+		}
+	}
 	catch 
 	{
 		$bSuccess = $false
@@ -143,24 +160,24 @@ function Get-EitCitrixDaaSSessionsInSite {
 
 function Get-EitCitrixDaaSSession {
 <#
-		.Synopsis
+		.SYNOPSIS
 			gets a Citrix DaaS Session object 
-		.Description
+		.DESCRIPTION
 			get a Citrix DaaS Session object 
 		
-		.Parameter bearerToken
+		.PARAMETER bearerToken
 			the bearerToken
 			
-		.Parameter customerId
+		.PARAMETER customerId
 			the customerId	
 		
-		.Parameter siteId
+		.PARAMETER siteId
 			the siteId				
 			
-		.Parameter sessionId
+		.PARAMETER sessionId
 			the sessionId		
 			
-		.Parameter endPoint
+		.PARAMETER endPoint
 			the endPoint, aka https://api-us.cloud.com
 			
 		.EXAMPLE
@@ -215,24 +232,25 @@ function Get-EitCitrixDaaSSession {
 
 function Stop-EitCitrixDaaSSession {
 <#
-		.Synopsis
+		.SYNOPSIS
 			logoffs a session
-		.Description
+			
+		.DESCRIPTION
 			Use this function to logoff a Citrix DaaS session
 		
-		.Parameter bearerToken
+		.PARAMETER bearerToken
 			the bearerToken
 			
-		.Parameter customerId
+		.PARAMETER customerId
 			the customerId	
 			
-		.Parameter siteId
+		.PARAMETER siteId
 			the siteId			
 			
-		.Parameter sessionId
+		.PARAMETER sessionId
 			the sessionId		
 			
-		.Parameter endPoint
+		.PARAMETER endPoint
 			the endPoint, aka https://api-us.cloud.com
 			
 		.EXAMPLE
@@ -294,35 +312,40 @@ function Stop-EitCitrixDaaSSession {
 
 function Get-EitCitrixDaaSMachinesInSite {
 <#
-		.Synopsis
+		.SYNOPSIS
 			List machines in Citrix DaaS site
-		.Description
+			
+		.DESCRIPTION
 			List machines in Citrix DaaS site
 		
-		.Parameter bearerToken
+		.PARAMETER bearerToken
 			the bearerToken
 			
-		.Parameter customerId
+		.PARAMETER customerId
 			the customerId	
 		
-		.Parameter siteId
+		.PARAMETER siteId
 			the siteId			
 			
-		.Parameter endPoint
+		.PARAMETER endPoint
 			the endPoint, aka https://api-us.cloud.com
+		
+		.PARAMETER maxRecordCountLimit
+			The maximum record count, should not be greater than 1000
 			
 		.EXAMPLE
 			Get-EitCitrixDaaSMachinesInSite -customerId MycustomerId -bearerToken MybearerToken -siteId MySiteID
 			List all machines in site MySite 
-
-
 			
 		.NOTES  
-			Copyright: (c)2022 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.1
 			
 			History:
 				V1.0 - 19.10.2022 - M.Trojahn - Initial creation
+				V1.1 - 13.08.2024 - M.Trojahn - Use paging for querying more than 1000 objects
+												https://developer-docs.citrix.com/en-us/citrix-daas-service-apis/citrix-daas-rest-apis/how-to-use-paging-to-query-many-objects-through-multiple-api-calls.html
+	
 	#>		
     param (
         [Parameter(Mandatory=$true)]
@@ -332,9 +355,13 @@ function Get-EitCitrixDaaSMachinesInSite {
         [Parameter(Mandatory=$true)]
         [string] $bearerToken,
 		[Parameter(Mandatory=$false)]
-		[string] $endPoint="https://api-us.cloud.com"	
+		[string] $endPoint="https://api-us.cloud.com",
+		[Parameter(Mandatory=$false)]
+		[ValidateRange(1,1000)]
+		[string] $maxRecordCountLimit="1000"	
+
     )
-    $requestUri = $endPoint + "/cvad/manage/Machines"
+    $requestUri = $endPoint + "/cvad/manage/Machines?limit=$maxRecordCountLimit"
     $headers = @{
         "Accept" = "application/json";
         "Authorization" = "CWSAuth Bearer=$bearerToken";
@@ -347,6 +374,13 @@ function Get-EitCitrixDaaSMachinesInSite {
 	try 
 	{	
 		$response = Invoke-RestMethod -Uri $requestUri -Method GET -Headers $headers -UseBasicParsing
+		while ($response.ContinuationToken -ne $null)
+		{
+			$requestUriContinue = $requestUri + "&continuationtoken=" + $response.ContinuationToken
+			$responsePage = Invoke-RestMethod -Uri $requestUriContinue -Method GET -Headers $headers
+			$response.Items += $responsePage.Items
+			$response.ContinuationToken = $responsePage.ContinuationToken
+		}
     }
 	catch 
 	{
@@ -359,30 +393,32 @@ function Get-EitCitrixDaaSMachinesInSite {
 
 function Get-EitCitrixDaaSbearerToken {
 	<#
-		.Synopsis
+		.SYNOPSIS
 			get a citrix DaaS api bearerToken
-		.Description
+			
+		.DESCRIPTION
 			get a citrix DaaS api bearerToken
 		
-		.Parameter clientId
+		.PARAMETER clientId
 			the client id	
 			
-		.Parameter clientSecret
+		.PARAMETER clientSecret
 			the client secret		
 			
-		.Parameter endPoint
+		.PARAMETER endPoint
 			the endPoint, aka https://api-us.cloud.com
 			
 		.EXAMPLE
 			Get-EitCitrixDaaSbearerToken -clientId MyClientID -clientSecret MyClientSecret
 			
 		.NOTES  
-			Copyright: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.1
+			Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.2
 			
 			History:
 				V1.0 - 19.10.2022 - M.Trojahn - Initial creation
-				V1.0 - 11.09.2023 - M.Trojahn - add -UseBasicParsing
+				V1.1 - 11.09.2023 - M.Trojahn - add -UseBasicParsing
+				V1.2 - 19.04.2024 - M.Trojahn - fix wrong client_id & client_secret variable declaration
 	#>
     param (
         [Parameter(Mandatory=$true)]
@@ -402,8 +438,8 @@ function Get-EitCitrixDaaSbearerToken {
 
 		$body = @{
 			grant_type = "client_credentials"
-			client_id = $client_id
-			client_secret = $client_secret
+			client_id = $clientId
+			client_secret = $clientSecret
 		}
 		
 		# Obtain bearer token from authorization server
@@ -423,24 +459,25 @@ function Get-EitCitrixDaaSbearerToken {
 
 function Get-EitCitrixDaaSMachine {
 <#
-		.Synopsis
+		.SYNOPSIS
 			gets a Citrix DaaS machine object 
-		.Description
+			
+		.DESCRIPTION
 			get a Citrix DaaS machine object 
 		
-		.Parameter bearerToken
+		.PARAMETER bearerToken
 			the bearerToken
 			
-		.Parameter customerId
+		.PARAMETER customerId
 			the customerId	
 		
-		.Parameter siteId
+		.PARAMETER siteId
 			the siteId				
 			
-		.Parameter machineId
+		.PARAMETER machineId
 			the sessionId		
 			
-		.Parameter endPoint
+		.PARAMETER endPoint
 			the endPoint, aka https://api-us.cloud.com
 			
 		.EXAMPLE
@@ -494,24 +531,25 @@ function Get-EitCitrixDaaSMachine {
 
 function Restart-EitCitrixDaaSMachine {
 <#
-		.Synopsis
+		.SYNOPSIS
 			Restart a Citrix DaaS machine
-		.Description
+			
+		.DESCRIPTION
 			Use this function to restart a Citrix DaaS machine
 		
-		.Parameter bearerToken
+		.PARAMETER bearerToken
 			the bearerToken
 			
-		.Parameter customerId
+		.PARAMETER customerId
 			the customerId	
 			
-		.Parameter siteId
+		.PARAMETER siteId
 			the siteId			
 			
-		.Parameter machineId
+		.PARAMETER machineId
 			the machineId		
 			
-		.Parameter endPoint
+		.PARAMETER endPoint
 			the endPoint, aka https://api-us.cloud.com
 			
 		.EXAMPLE
@@ -573,24 +611,25 @@ function Restart-EitCitrixDaaSMachine {
 
 function Stop-EitCitrixDaaSMachine {
 <#
-		.Synopsis
+		.SYNOPSIS
 			Stop a Citrix DaaS machine
-		.Description
+			
+		.DESCRIPTION
 			Use this function to shutdwon a Citrix DaaS machine
 		
-		.Parameter bearerToken
+		.PARAMETER bearerToken
 			the bearerToken
 			
-		.Parameter customerId
+		.PARAMETER customerId
 			the customerId	
 			
-		.Parameter siteId
+		.PARAMETER siteId
 			the siteId			
 			
-		.Parameter machineId
+		.PARAMETER machineId
 			the machineId		
 			
-		.Parameter endPoint
+		.PARAMETER endPoint
 			the endPoint, aka https://api-us.cloud.com
 			
 		.EXAMPLE
@@ -652,24 +691,25 @@ function Stop-EitCitrixDaaSMachine {
 
 function Start-EitCitrixDaaSMachine {
 <#
-		.Synopsis
+		.SYNOPSIS
 			Start a Citrix DaaS machine
-		.Description
+			
+		.DESCRIPTION
 			Use this function to start a Citrix DaaS machine
 		
-		.Parameter bearerToken
+		.PARAMETER bearerToken
 			the bearerToken
 			
-		.Parameter customerId
+		.PARAMETER customerId
 			the customerId	
 			
-		.Parameter siteId
+		.PARAMETER siteId
 			the siteId			
 			
-		.Parameter machineId
+		.PARAMETER machineId
 			the machineId		
 			
-		.Parameter endPoint
+		.PARAMETER endPoint
 			the endPoint, aka https://api-us.cloud.com
 			
 		.EXAMPLE
