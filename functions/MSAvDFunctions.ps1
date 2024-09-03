@@ -7,13 +7,15 @@
 # Microsoft AvD functions for Raptor Scripts
 #
 # History:
-#   V1.0 - 26.07.2024 - M.Trojahn - Initial creation
+#   V1.0 - 03.09.2024 - M.Trojahn - Initial creation
 #									add Get-EitAzBearerToken, Get-EitAzHostPoolsBySubscription, 
 #									Get-EitAzSessionHostsByHostPool, Get-EitAzUserSessionsByHostPool, Send-EitAzUserMessage, 
-#									Disconnect-EitAzUserSession, Remove-EitAzUserSession
+#									Disconnect-EitAzUserSession, Remove-EitAzUserSession, Get-EitAzUserSession
 #
 #
 # ===========================================================================
+
+
 
 function Get-EitAzBearerToken {
 <#
@@ -40,7 +42,7 @@ function Get-EitAzBearerToken {
 			Version		:	1.0
 			
 			History:
-				V1.0 - 26.07.2024 - M.Trojahn - Initial creation
+				V1.0 - 03.09.2024 - M.Trojahn - Initial creation
 				
 	#>
 	param(
@@ -53,20 +55,31 @@ function Get-EitAzBearerToken {
 		[Parameter(Mandatory=$false)]
 		[string] $baseURL = 'https://management.azure.com'
 	)
+	$bSuccess = $true
+	$StatusMessage = "Successfuly got bearerToken!"
+	$response = ""
+	$bearerToken = ""
+    try {
+		## https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-client-creds-grant-flow
+		[string]$Uri = "https://login.microsoftonline.com/$TenantID/oauth2/v2.0/token"
 
-    
-	## https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-client-creds-grant-flow
-	[string]$Uri = "https://login.microsoftonline.com/$TenantID/oauth2/v2.0/token"
+		[hashtable]$Body = @{
+			grant_type    = 'client_credentials'
+			client_Id     = $AppId
+			client_Secret = $AppSecret
+			scope         = "$baseURL/.default"
+		}
 
-	[hashtable]$Body = @{
-		grant_type    = 'client_credentials'
-		client_Id     = $AppId
-		client_Secret = $AppSecret
-		scope         = "$baseURL/.default"
+		$response = Invoke-RestMethod -URI $Uri -Body $Body -Method 'POST' -ContentType 'application/x-www-form-urlencoded'  -UseBasicParsing -ErrorAction SilentlyContinue
+		$bearerToken = $response | Select-Object -ExpandProperty access_token
 	}
-
-
-	Invoke-RestMethod -URI $Uri -Body $Body -Method 'POST' -ContentType 'application/x-www-form-urlencoded' | Select-Object -ExpandProperty access_token -ErrorAction SilentlyContinue
+	catch 
+	{
+		$bSuccess = $false
+		$StatusMessage = $_.Exception.Message
+	}
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;bearerToken=$bearerToken})
+	return $ReturnObject	
 }
 
 function Get-EitAzHostPoolsBySubscription {
@@ -91,7 +104,7 @@ function Get-EitAzHostPoolsBySubscription {
 			Version		:	1.0
 			
 			History:
-				V1.0 - 26.07.2024 - M.Trojahn - Initial creation
+				V1.0 - 03.09.2024 - M.Trojahn - Initial creation
 				
 	#>	
 	param(
@@ -104,20 +117,31 @@ function Get-EitAzHostPoolsBySubscription {
 		[Parameter(Mandatory = $false)]
 		[string][string]$AzBaseURL = "https://management.azure.com",
 		[Parameter(Mandatory = $false)]
-		[string]$Provider = 'providers/Microsoft.DesktopVirtualization',
+		[string]$Provider = 'Microsoft.DesktopVirtualization',
 		[Parameter(Mandatory = $false)]
-		[string]$APIVersion = '?api-version=2022-02-10-preview'
+		[string]$APIVersion = '?api-version=2024-04-03'
 	)
+	$bSuccess = $true
+	$StatusMessage = "Successfuly got hostpools!"
+	$result = ""
+	try
+	{
+		[hashtable]$header = @{
+			'Authorization' = "Bearer $BearerToken"
+		}
+		$header.Add('Content-Type',$contentType )
+		$Uri = "$AzBaseURL/subscriptions/$Subscription/providers/$Provider/hostPools$APIVersion"; 
 
-	[hashtable]$header = @{
-		'Authorization' = "Bearer $BearerToken"
+		$result = Invoke-WebRequest -Uri $Uri -Headers $header -UseBasicParsing
+		$HostPools = $($result.content | ConvertFrom-Json).value
 	}
-	$header.Add('Content-Type',$contentType )
-	$Uri = "$AzBaseURL/subscriptions/$Subscription/$Provider/hostPools$APIVersion"; 
-
-	$result = Invoke-WebRequest -Uri $Uri -Headers $header
-	$HostPools = $($result.content | ConvertFrom-Json).value
-	return $HostPools
+	catch 
+	{
+		$bSuccess = $false
+		$StatusMessage = $_.Exception.Message
+	}
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;HostPools=$HostPools})
+	return $ReturnObject
 }
 
 function Get-EitAzSessionHostsByHostPool {
@@ -145,7 +169,7 @@ function Get-EitAzSessionHostsByHostPool {
 			Version		:	1.0
 			
 			History:
-				V1.0 - 26.07.2024 - M.Trojahn - Initial creation
+				V1.0 - 03.09.2024 - M.Trojahn - Initial creation
 				
 	#>	
 	param(
@@ -160,23 +184,35 @@ function Get-EitAzSessionHostsByHostPool {
 		[Parameter(Mandatory = $false)]
 		[string][string]$AzBaseURL = "https://management.azure.com",
 		[Parameter(Mandatory = $false)]
-		[string]$Provider = 'providers/Microsoft.DesktopVirtualization',
+		[string]$Provider = 'Microsoft.DesktopVirtualization',
 		[Parameter(Mandatory = $false)]
-		[string]$APIVersion = '?api-version=2022-02-10-preview'
+		[string]$APIVersion = '?api-version=2024-04-03'
 	)
+	$bSuccess = $true
+	$StatusMessage = "Successfuly got SessionHosts!"
+	$result = ""
+	try
+	{
 
-	[hashtable]$header = @{
-		'Authorization' = "Bearer $BearerToken"
+		[hashtable]$header = @{
+			'Authorization' = "Bearer $BearerToken"
+		}
+		$header.Add('Content-Type', $contentType )
+
+		$ResourceGroupName = $($HostPoolId.Split("/")[4])
+		$HostPoolName = $($HostPoolId.Split("/")[8])
+
+		$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts$APIVersion"
+		$result = Invoke-WebRequest -Uri $Uri -Headers $header -UseBasicParsing
+		$SessionHosts = $($result.content | ConvertFrom-Json).value
 	}
-	$header.Add('Content-Type', $contentType )
-
-	$ResourceGroupName = $($HostPoolId.Split("/")[4])
-	$HostPoolName = $($HostPoolId.Split("/")[8])
-
-	$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/$Provider/hostPools/$HostPoolName/sessionHosts$APIVersion"
-	$result = Invoke-WebRequest -Uri $Uri -Headers $header
-	$SessionHosts = $($result.content | ConvertFrom-Json).value
-	return $SessionHosts
+	catch 
+	{
+		$bSuccess = $false
+		$StatusMessage = $_.Exception.Message
+	}
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;SessionHosts=$SessionHosts})
+	return $ReturnObject	
 }
 
 function Get-EitAzUserSessionsByHostPool {
@@ -204,7 +240,7 @@ function Get-EitAzUserSessionsByHostPool {
 			Version		:	1.0
 			
 			History:
-				V1.0 - 26.07.2024 - M.Trojahn - Initial creation
+				V1.0 - 03.09.2024 - M.Trojahn - Initial creation
 				
 	#>	
 	param(
@@ -219,23 +255,35 @@ function Get-EitAzUserSessionsByHostPool {
 		[Parameter(Mandatory = $false)]
 		[string][string]$AzBaseURL = "https://management.azure.com",
 		[Parameter(Mandatory = $false)]
-		[string]$Provider = 'providers/Microsoft.DesktopVirtualization',
+		[string]$Provider = 'Microsoft.DesktopVirtualization',
 		[Parameter(Mandatory = $false)]
-		[string]$APIVersion = '?api-version=2022-02-10-preview'
+		[string]$APIVersion = '?api-version=2024-04-03'
 	)
+	$bSuccess = $true
+	$StatusMessage = "Successfuly got user sessions!"
+	$result = ""
+	try
+	{
+		[hashtable]$header = @{
+			'Authorization' = "Bearer $BearerToken"
+		}
+		$header.Add('Content-Type',$contentType )
 
-	[hashtable]$header = @{
-		'Authorization' = "Bearer $BearerToken"
+		$ResourceGroupName = $($HostPoolId.Split("/")[4])
+		$HostPoolName = $($HostPoolId.Split("/")[8])
+
+		$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/userSessions$APIVersion"
+		$result = Invoke-WebRequest -Uri $Uri -Headers $header -UseBasicParsing
+		$UserSessionsByHostPool = $($result.content | ConvertFrom-Json).value
 	}
-	$header.Add('Content-Type',$contentType )
-
-	$ResourceGroupName = $($HostPoolId.Split("/")[4])
-	$HostPoolName = $($HostPoolId.Split("/")[8])
-
-	$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/$Provider/hostPools/$HostPoolName/userSessions$APIVersion"
-	$result = Invoke-WebRequest -Uri $Uri -Headers $header
-	$UserSessionsByHostPool = $($result.content | ConvertFrom-Json).value
-	return $UserSessionsByHostPool
+	catch 
+	{
+		$bSuccess = $false
+		$StatusMessage = $_.Exception.Message
+	}
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;Sessions=$UserSessionsByHostPool})
+	return $ReturnObject	
+	
 }
 
 function Send-EitAzUserMessage {
@@ -266,7 +314,7 @@ function Send-EitAzUserMessage {
 			Version		:	1.0
 			
 			History:
-				V1.0 - 26.07.2024 - M.Trojahn - Initial creation
+				V1.0 - 03.09.2024 - M.Trojahn - Initial creation
 				
 	#>	
 	param(
@@ -283,31 +331,42 @@ function Send-EitAzUserMessage {
 		[Parameter(Mandatory = $false)]
 		[string][string]$AzBaseURL = "https://management.azure.com",
 		[Parameter(Mandatory = $false)]
-		[string]$Provider = 'providers/Microsoft.DesktopVirtualization',
+		[string]$Provider = 'Microsoft.DesktopVirtualization',
 		[Parameter(Mandatory = $false)]
-		[string]$APIVersion = '?api-version=2022-02-10-preview'
+		[string]$APIVersion = '?api-version=2024-04-03'
 	)
+	$bSuccess = $true
+	$StatusMessage = "Successfuly send message!"
+	$result = ""
+	try
+	{
+		[hashtable]$header = @{
+			'Authorization' = "Bearer $BearerToken"
+		}
+		$header.Add('Content-Type',$contentType )
 
-	[hashtable]$header = @{
-		'Authorization' = "Bearer $BearerToken"
+		$Subscription = $($SessionID.Split("/")[2])
+		$ResourceGroupName = $($SessionID.Split("/")[4])
+		$HostPoolName = $($SessionID.Split("/")[8])
+		$SessionHostName = $($SessionID.Split("/")[10])
+		$SessionIdNumber = $($SessionID.Split("/")[12])
+
+		$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIDNumber/sendMessage$APIVersion"
+		$Body = @{'messageBody' = $MessageBody; 'messageTitle' = $MessageTitle }
+		$JsonBody = $Body | ConvertTo-Json -Depth 20
+
+		## convertto-json converts certain characters to codes so we convert back as Azure doesn't like them
+		$JsonBody = $JsonBody  -replace '\\u003e' , '>' -replace '\\u003c' , '<' -replace '\\u0027' , '''' -replace '\\u0026' , '&'
+
+		$Result = Invoke-WebRequest -Uri $Uri -Headers $header -Method 'POST' -Body $JsonBody -UseBasicParsing
 	}
-	$header.Add('Content-Type',$contentType )
-
-	$Subscription = $($SessionID.Split("/")[2])
-	$ResourceGroupName = $($SessionID.Split("/")[4])
-	$HostPoolName = $($SessionID.Split("/")[8])
-	$SessionHostName = $($SessionID.Split("/")[10])
-	$SessionIdNumber = $($SessionID.Split("/")[12])
-
-	$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIDNumber/sendMessage$APIVersion"
-	$Body = @{'messageBody' = $MessageBody; 'messageTitle' = $MessageTitle }
-	$JsonBody = $Body | ConvertTo-Json -Depth 20
-
-	## convertto-json converts certain characters to codes so we convert back as Azure doesn't like them
-	$JsonBody = $JsonBody  -replace '\\u003e' , '>' -replace '\\u003c' , '<' -replace '\\u0027' , '''' -replace '\\u0026' , '&'
-
-	$Result = Invoke-WebRequest -Uri $Uri -Headers $header -Method 'POST' -Body $JsonBody
-	return $Result.StatusCode
+	catch 
+	{
+		$bSuccess = $false
+		$StatusMessage = $_.Exception.Message
+	}
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;StatusCode=$Result.StatusCode})
+	return $ReturnObject	
 }
 
 function Disconnect-EitAzUserSession {
@@ -332,7 +391,7 @@ function Disconnect-EitAzUserSession {
 			Version		:	1.0
 			
 			History:
-				V1.0 - 26.07.2024 - M.Trojahn - Initial creation
+				V1.0 - 03.09.2024 - M.Trojahn - Initial creation
 				
 	#>	
 	param(
@@ -345,26 +404,36 @@ function Disconnect-EitAzUserSession {
 		[Parameter(Mandatory = $false)]
 		[string][string]$AzBaseURL = "https://management.azure.com",
 		[Parameter(Mandatory = $false)]
-		[string]$Provider = 'providers/Microsoft.DesktopVirtualization',
+		[string]$Provider = 'Microsoft.DesktopVirtualization',
 		[Parameter(Mandatory = $false)]
-		[string]$APIVersion = '?api-version=2022-02-10-preview'
+		[string]$APIVersion = '?api-version=2024-04-03'
 	)
+	$bSuccess = $true
+	$StatusMessage = "Successfuly disconnected session!"
+	$result = ""
+	try
+	{
+		[hashtable]$header = @{
+			'Authorization' = "Bearer $BearerToken"
+		}
+		$header.Add('Content-Type',$contentType )
 
-	[hashtable]$header = @{
-		'Authorization' = "Bearer $BearerToken"
+		$Subscription = $($SessionID.Split("/")[2])
+		$ResourceGroupName = $($SessionID.Split("/")[4])
+		$HostPoolName = $($SessionID.Split("/")[8])
+		$SessionHostName = $($SessionID.Split("/")[10])
+		$SessionIdNumber = $($SessionID.Split("/")[12])
+
+		$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIDNumber/disconnect$APIVersion"
+		$Result = Invoke-WebRequest -Uri $Uri -Headers $header -Method 'POST' -UseBasicParsing
 	}
-	$header.Add('Content-Type',$contentType )
-
-	$Subscription = $($SessionID.Split("/")[2])
-	$ResourceGroupName = $($SessionID.Split("/")[4])
-	$HostPoolName = $($SessionID.Split("/")[8])
-	$SessionHostName = $($SessionID.Split("/")[10])
-	$SessionIdNumber = $($SessionID.Split("/")[12])
-
-	$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIDNumber/disconnect$APIVersion"
-	
-	$Result = Invoke-WebRequest -Uri $Uri -Headers $header -Method 'POST' 
-	return $Result.StatusCode
+	catch 
+	{
+		$bSuccess = $false
+		$StatusMessage = $_.Exception.Message
+	}
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;StatusCode=$Result.StatusCode})
+	return $ReturnObject	
 }
 
 function Remove-EitAzUserSession {
@@ -389,7 +458,7 @@ function Remove-EitAzUserSession {
 			Version		:	1.0
 			
 			History:
-				V1.0 - 26.07.2024 - M.Trojahn - Initial creation
+				V1.0 - 03.09.2024 - M.Trojahn - Initial creation
 				
 	#>	
 	param(
@@ -402,24 +471,110 @@ function Remove-EitAzUserSession {
 		[Parameter(Mandatory = $false)]
 		[string][string]$AzBaseURL = "https://management.azure.com",
 		[Parameter(Mandatory = $false)]
-		[string]$Provider = 'providers/Microsoft.DesktopVirtualization',
+		[string]$Provider = 'Microsoft.DesktopVirtualization',
 		[Parameter(Mandatory = $false)]
-		[string]$APIVersion = '?api-version=2022-02-10-preview'
+		[string]$APIVersion = '?api-version=2024-04-03'
 	)
+	$bSuccess = $true
+	$StatusMessage = "Successfuly logged of user!"
+	$response = ""
+	try 
+	{
+		[hashtable]$header = @{
+			'Authorization' = "Bearer $BearerToken"
+		}
+		$header.Add('Content-Type',$contentType )
 
-	[hashtable]$header = @{
-		'Authorization' = "Bearer $BearerToken"
+		$Subscription = $($SessionID.Split("/")[2])
+		$ResourceGroupName = $($SessionID.Split("/")[4])
+		$HostPoolName = $($SessionID.Split("/")[8])
+		$SessionHostName = $($SessionID.Split("/")[10])
+		$SessionIdNumber = $($SessionID.Split("/")[12])
+
+		$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIDNumber$APIVersion"
+		$response = Invoke-WebRequest -Uri $Uri -Headers $header -Method 'DELETE' -UseBasicParsing
 	}
-	$header.Add('Content-Type',$contentType )
+	catch
+	{
+		$bSuccess = $false
+		$StatusMessage = $_.Exception.Message
+	}
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;StatusCode=$response.StatusCode})
+	return $ReturnObject	
+}
 
-	$Subscription = $($SessionID.Split("/")[2])
-	$ResourceGroupName = $($SessionID.Split("/")[4])
-	$HostPoolName = $($SessionID.Split("/")[8])
-	$SessionHostName = $($SessionID.Split("/")[10])
-	$SessionIdNumber = $($SessionID.Split("/")[12])
 
-	$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIDNumber$APIVersion"
-	$Result = Invoke-WebRequest -Uri $Uri -Headers $header -Method 'DELETE' 
-	return $Result.StatusCode
+
+function Get-EitAzUserSession {
+	<#
+		.SYNOPSIS
+			Get Azure User Session 
+		
+		.DESCRIPTION
+			Get Azure User Session 
+		
+		.PARAMETER BearerToken
+			a Azure BearerToken created by Get-EitAzBearerToken
+			
+		.PARAMETER SessionId
+			a valid Azure session Id
+			
+		.
+			
+		.EXAMPLE
+			Get-EitAzUserSessionsByHostPool -BearerToken MyBearerToken -SessionId /my/session/id
+			
+		.NOTES  
+			Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.0
+			
+			History:
+				V1.0 - 02.09.2024 - M.Trojahn - Initial creation
+				
+	#>	
+	param(
+		[Parameter(Mandatory=$true)]
+		[string]$BearerToken,
+		[Parameter(Mandatory=$true)]
+		[string]$SessionId,
+		[Parameter(Mandatory = $false)]
+		[string]$contentType = 'application/json',
+		[Parameter(Mandatory = $false)]
+		[string][string]$AzBaseURL = "https://management.azure.com",
+		[Parameter(Mandatory = $false)]
+		[string]$Provider = 'Microsoft.DesktopVirtualization',
+		[Parameter(Mandatory = $false)]
+		[string]$APIVersion = '?api-version=2024-04-03'
+	)
+	$bSuccess = $true
+	$StatusMessage = "Successfuly got user session!"
+	$result = ""
+	$SessionState = $null
+	try
+	{
+		[hashtable]$header = @{
+			'Authorization' = "Bearer $BearerToken"
+		}
+		$header.Add('Content-Type',$contentType )
+
+		
+		
+		$Subscription = $($SessionId.Split("/")[2])
+		$ResourceGroupName = $($SessionId.Split("/")[4])
+		$HostPoolName = $($SessionId.Split("/")[8])
+		$SessionHostName = $($SessionId.Split("/")[10])
+		$SessionIdNumber = $($SessionId.Split("/")[12])
+
+		$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIdNumber$APIVersion"
+		$result = Invoke-WebRequest -Uri $Uri -Headers $header -UseBasicParsing
+		$SessionState = $($result.content | ConvertFrom-Json).properties.sessionState
+	}
+	catch 
+	{
+		$bSuccess = $false
+		$StatusMessage = $_.Exception.Message
+	}
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;SessionId=$SessionId;SessionState=$SessionState})
+	return $ReturnObject	
 }
 
