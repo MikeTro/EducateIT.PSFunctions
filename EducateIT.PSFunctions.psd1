@@ -37,6 +37,9 @@
 #			V2.0.1	- 09.04.2024 - M. Trojahn - return $FileIsLocked = $false if file does not exists in function Test-EITFileIsLocked in VHDFunctions.ps1
 #			V2.0.2	- 19.04.2024 - M. Trojahn - fix wrong client_id & client_secret variable declaration in function Get-EitCitrixDaaSbearerToken in CitrixDaaSFunctions.ps1
 #			V2.0.3  - 22.05.2024 - M. Trojahn - check if $OSType = $null in Get-EitBrokerMachines in CitrixFunctiond
+#			V2.1.0  - 03.09.2024 - M. Trojahn - Add MSAvDFunctions.ps1 (Get-EitAzBearerToken, Get-EitAzHostPoolsBySubscription, 
+#													Get-EitAzSessionHostsByHostPool, Get-EitAzUserSessionsByHostPool, Send-EitAzUserMessage, 
+#													Disconnect-EitAzUserSession, Remove-EitAzUserSession)
 #
 ###############################################################################################
 
@@ -46,7 +49,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '2.0.3'
+ModuleVersion = '2.1.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -61,7 +64,7 @@ Author = 'EducateIT GmbH'
 CompanyName = 'EducateIT GmbH'
 
 # Copyright statement for this module
-Copyright = '(c) 2023 EducateIT GmbH. All rights reserved.'
+Copyright = '(c) 2024 EducateIT GmbH. All rights reserved.'
 
 # Description of the functionality provided by this module
 Description = 'EducateIT Powershell functions'
@@ -116,7 +119,8 @@ NestedModules = @(
 	'.\functions\EducateITStatisticServerFunctions.ps1'
 	'.\functions\CitrixDaaSFunctions.ps1',
 	'.\functions\ProcessMonitorFunctions.ps1',
-	'.\functions\RDSFunctions.ps1'
+	'.\functions\RDSFunctions.ps1',
+	'.\functions\MSAvDFunctions.ps1'
 )
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
