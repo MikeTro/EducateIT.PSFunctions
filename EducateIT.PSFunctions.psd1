@@ -40,7 +40,7 @@
 #			V2.1.0  - 03.09.2024 - M. Trojahn - Add MSAvDFunctions.ps1 (Get-EitAzBearerToken, Get-EitAzHostPoolsBySubscription, 
 #													Get-EitAzSessionHostsByHostPool, Get-EitAzUserSessionsByHostPool, Send-EitAzUserMessage, 
 #													Disconnect-EitAzUserSession, Remove-EitAzUserSession)
-#			V2.2.0  - 26.09.2024 - M. Trojahn - Add CertificatesFunctions.ps1
+#			V2.2.0  - 26.09.2024 - M. Trojahn - Add CertificateFunctions.ps1
 #
 ###############################################################################################
 
@@ -122,7 +122,7 @@ NestedModules = @(
 	'.\functions\ProcessMonitorFunctions.ps1',
 	'.\functions\RDSFunctions.ps1',
 	'.\functions\MSAvDFunctions.ps1'
-	'.\functions\CertificatesFunctions.ps1'
+	'.\functions\CertificateFunctions.ps1'
 )
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
