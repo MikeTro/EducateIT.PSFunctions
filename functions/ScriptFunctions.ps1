@@ -1,8 +1,8 @@
 #
 # ScriptFunctions.ps1
 # ===========================================================================
-# (c)2023 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.12
+# (c)2024 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
+# Version 1.13
 #
 # Useful Script functions
 # History:
@@ -20,7 +20,7 @@
 #									 Add Get-EitLinkNamesFromXenDataConf, Get-EitLinkNameForBrokerMachine
 #	V1.11 - 11.05.2023 - M.Trojahn - Add Raptor to Server ValidateSet in function New-EitEncryptedPassword
 #	V1.12 - 07.09.2023 - M.Trojahn - Add UTF8 Encoding in function New-EitEncryptedPassword
-#	
+#	V1.13 - 26.09.2024 - M.Trojahn - Add Get-EitShortPath
 #	
 # ===========================================================================
 
@@ -857,5 +857,65 @@ function Get-EitLinkNameForBrokerMachine {
 	}
   
     $ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;LinkName=$LinkName})
+    return $ReturnObject
+}
+
+
+function Get-EitShortPath { 
+<#
+	.SYNOPSIS
+			Return shortpath
+	.DESCRIPTION
+		Return the shortpath of a given path
+		
+	.PARAMETER Path
+		thge long path
+	
+	.EXAMPLE
+		Get-EitShortPath -Path myPath
+	
+	.NOTES  
+		Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+		Version		:	1.0
+		
+		History:
+			V1.0 - 26.09.2024 - M.Trojahn - Initial creation
+			
+#>	
+	 Param(
+        [Parameter(Mandatory=$True)][string]$Path
+    )
+	
+	
+	[boolean] 	$bSuccess = $true
+	[string] 	$StatusMessage = "Successfully got shortname"
+    
+	try 
+	{ 
+		if (Test-Path $Path) 
+		{ 
+			$FileSystemObject = New-Object -ComObject Scripting.FileSystemObject
+			$myPath = Get-Item $Path
+			if ($myPath.PSIsContainer)
+			{ 
+				$ShortPath = $FileSystemObject.GetFolder($myPath).ShortPath
+			}
+			else 
+			{
+				$ShortPath = $FileSystemObject.GetFile($myPath).ShortPath
+			}
+		}
+		else 
+		{
+			throw ("Path " + $Path + " does not exists!")
+		}
+	}
+    catch 
+	{
+		$bSuccess = $false
+		$StatusMessage = $_.Exception.Message
+	}
+  
+    $ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;ShortPath=$ShortPath})
     return $ReturnObject
 }
