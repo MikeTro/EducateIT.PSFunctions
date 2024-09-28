@@ -60,13 +60,13 @@ function New-EitCACertificate {
 
     .EXAMPLE
         New-EitCACertificate -Passphrase mySecureString 
-        Generate a CA certificate Raptor-CA.crt & Raptor-CA.key in C:\Key using input mySecureString as passphrase
-
-    .INPUTS
-        None
+        Generate a CA certificate Raptor-CA.crt & Raptor-CA.key in "C:\Program Files\EducateIT\Keys" using input mySecureString as passphrase
 
     .OUTPUTS
-        None
+        Success						: True
+		Message						: Successfully created CA certificate
+		CertificateSigningRequest	: Path to the created csr file
+		KeyFile						: Path to the key file
 		
 	.NOTES  
 			Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
@@ -125,8 +125,10 @@ function New-EitCACertificate {
 		[ValidateNotNullOrEmpty()]
 		[String] $OutputName = "Raptor-CA"
     )
+	
 	[boolean] 	$bSuccess = $true
 	[string] 	$StatusMessage = "Successfully created CA certificate"
+	
 	try
 	{
 		# OpenSSL executable
@@ -180,7 +182,7 @@ function New-EitCACertificate {
 			$arguments += "`"/C=$Country/ST=$State/L=$City/O=$OrganizationName/OU=/CN=$CommonName/emailAddress=$emailAddress`""
 			$arguments += "-passout"
 			
-			# Passout argument
+			
 			$password = ''
 			$password = (New-Object PSCredential "User",$Passphrase).GetNetworkCredential().Password
 			$arguments += "pass:$password"
@@ -231,34 +233,32 @@ function New-EitCACertificate {
 function New-EitCertificateSigningRequest {
     <#
     .SYNOPSIS
-        Generate a CA-certificat
+        Generate a certificate signing request
 
     .DESCRIPTION
-        The New-EitCACertificat command generates a CA certificate using the options specified.
+        The New-EitCertificateSigningRequest command generates a certificate signing request using the options specified.
 
-    .PARAMETER passphrase
-        Key encryption passphrase.
-
-    .PARAMETER ValidDays
-        Certificate validy in days. Default is 30 days. Minimum is 30 and maximum is 9125 (i.e. 25 years).
-
-	.PARAMETER OutputPath
+   .PARAMETER OutputPath
+		Path to store the certificate
 
 	.PARAMETER OutputName
-
+		the base name of the files
+	
+	.PARAMETER CommonName
+		the common name (fqdn)
+		
     .PARAMETER OpenSslPath
         Full path to the OpenSSL executable file. Optional if 'openssl.exe' is already located in the shell's command search path.
 
     .EXAMPLE
-        New-EitSelfSignedCertificate key.pem CN:server.domain.com cert.pem
-        Generate a self-signed certificate using input key file 'key.pem' and subject name provided. Output certificate to file 'cert.pem'.
-
-
-    .INPUTS
-        None
+		New-EitCertificateSigningRequest 
+        Generate a certificate signing request Raptor-Server.csr in "C:\Program Files\EducateIT\Keys" 
 
     .OUTPUTS
-        None
+        Success						: True
+		Message						: Successfully created certificate signing request
+		CertificateSigningRequest	: Path to the created csr file
+		KeyFile						: Path to the key file
 		
 	.NOTES  
 			Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
@@ -290,6 +290,9 @@ function New-EitCertificateSigningRequest {
 		
     )
 
+	[boolean] 	$bSuccess = $true
+	[string] 	$StatusMessage = "Successfully created certificate signing request"
+	
 	try
 	{
 		# OpenSSL executable
@@ -375,16 +378,20 @@ function New-EitCertificateSigningRequest {
 	catch
 	{
 		Write-Error $_.Exception.Message
+		$bSuccess = $false
+		$StatusMessage = $_.Exception.Message
 	}
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;CertificateSigningRequest=$CertificateFile;KeyFile=$KeyFile})
+    return $ReturnObject
 }
 
 function New-EitSelfSignedCertificate {
     <#
     .SYNOPSIS
-        Generate a CA-certificat
+        Generate a Self Signed Certificate
 
     .DESCRIPTION
-        The New-EitCACertificat command generates a CA certificate using the options specified.
+        The New-EitSelfSignedCertificate command generates Self Signed Certificate using the options specified.
 
     .PARAMETER passphrase
         Key encryption passphrase.
@@ -393,22 +400,21 @@ function New-EitSelfSignedCertificate {
         Certificate validy in days. Default is 30 days. Minimum is 30 and maximum is 9125 (i.e. 25 years).
 
 	.PARAMETER OutputPath
+		Path to store the certificate
 
 	.PARAMETER OutputName
+		the base name of the files
 
     .PARAMETER OpenSslPath
         Full path to the OpenSSL executable file. Optional if 'openssl.exe' is already located in the shell's command search path.
 
     .EXAMPLE
-        New-EitSelfSignedCertificate key.pem CN:server.domain.com cert.pem
-        Generate a self-signed certificate using input key file 'key.pem' and subject name provided. Output certificate to file 'cert.pem'.
-
-
-    .INPUTS
-        None
-
+        New-EitSelfSignedCertificate CACertificateFile myCA.crt -CAKeyFile myCA.key -CertificateSigningRequest myCertificateSigningRequest -Passphrase myCAPassphrase 
+ 
     .OUTPUTS
-        None
+        Success			: True
+		Message			: Successfully created self signed certificate
+		CertificateFile	: Path to certificate.crt
 		
 	.NOTES  
 			Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
@@ -444,19 +450,21 @@ function New-EitSelfSignedCertificate {
 		[SecureString]
 		$Passphrase,
 		
-		
-		[Parameter(Mandatory=$true, HelpMessage="Key encryption passphrase")]
+		[Parameter(Mandatory=$true)]
 		[ValidateNotNullOrEmpty()]
 		[String] $CertificateSigningRequest,
 		
-		[Parameter(Mandatory=$true, HelpMessage="Key encryption passphrase")]
+		[Parameter(Mandatory=$true)]
 		[ValidateNotNullOrEmpty()]
 		[String] $CACertificateFile,
 		
-		[Parameter(Mandatory=$true, HelpMessage="Key encryption passphrase")]
+		[Parameter(Mandatory=$true)]
 		[ValidateNotNullOrEmpty()]
 		[String] $CAKeyFile
     )
+	
+		[boolean] 	$bSuccess = $true
+		[string] 	$StatusMessage = "Successfully created self signed certificate"
 	
 	try
 	{
@@ -481,7 +489,7 @@ function New-EitSelfSignedCertificate {
 		if ($myShortPath.Success -eq $True)
 		{
 			$OutputPath = $myShortPath.ShortPath
-			$CertificateFile = $OutputPath + "\" + $OutputName + ".csr"
+			$CertificateFile = $OutputPath + "\" + $OutputName + ".crt"
 			
 			# OpenSSL arguments
 			$arguments = @("x509")
@@ -499,7 +507,7 @@ function New-EitSelfSignedCertificate {
 			$arguments += "$ValidDays"
 			$arguments += "-sha256"
 			$arguments += "-passin"
-			
+		
 			$password = ''
 			$password = (New-Object PSCredential "User",$Passphrase).GetNetworkCredential().Password
 			$arguments += "pass:$password"
@@ -541,7 +549,11 @@ function New-EitSelfSignedCertificate {
 	catch
 	{
 		Write-Error $_.Exception.Message
+		$bSuccess = $false
+		$StatusMessage = $_.Exception.Message
 	}
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;CertificateFile=$CertificateFile})
+    return $ReturnObject
 }
 
 
