@@ -60,7 +60,7 @@ function New-EitCACertificate {
 
     .EXAMPLE
         New-EitCACertificate -Passphrase mySecureString 
-        Generate a CA certificate Raptor-CA.crt & Raptor-CA.key in "C:\Program Files\EducateIT\Keys" using input mySecureString as passphrase
+        Generate a CA certificate EducateIT-CA.crt & EducateIT-CA.key in "C:\Program Files\EducateIT\Keys" using input mySecureString as passphrase
 
     .OUTPUTS
         Success						: True
@@ -123,7 +123,7 @@ function New-EitCACertificate {
 		
 		[Parameter(Mandatory=$false)]
 		[ValidateNotNullOrEmpty()]
-		[String] $OutputName = "Raptor-CA"
+		[String] $OutputName = "EducateIT-CA"
     )
 	
 	[boolean] 	$bSuccess = $true
@@ -155,65 +155,72 @@ function New-EitCACertificate {
 			$CertificateFile = ($OutputPath + "\" + $OutputName + ".crt")
 			$KeyFile = ($OutputPath + "\" + $OutputName + ".key")
 			
-			# OpenSSL arguments
-			$arguments = @("req")
-
-			$arguments += "-new"
-			$rand = Join-Path $env:TEMP "opensslrand"
-			Get-Random | Set-Content $rand
-			$arguments += "-rand"
-			$arguments += "`"$rand`""
-			$arguments += "-extensions"
-			$arguments += "v3_ca"
-			$arguments += "-newkey"
-			$arguments += "rsa:2048bits"
-			$arguments += "-x509"
-
-			$arguments += "-keyout"
-			$arguments += "`"$KeyFile`""
-			
-			$arguments += "-days"
-			$arguments += $ValidDays
-			   
-			$arguments += "-out"
-			$arguments += "`"$CertificateFile`""
-			
-			$arguments += "-subj"
-			$arguments += "`"/C=$Country/ST=$State/L=$City/O=$OrganizationName/OU=/CN=$CommonName/emailAddress=$emailAddress`""
-			$arguments += "-passout"
-			
-			
-			$password = ''
-			$password = (New-Object PSCredential "User",$Passphrase).GetNetworkCredential().Password
-			$arguments += "pass:$password"
-		  
-			# Verbose output
-			Write-Verbose "Command:`n`n$opensslexe $([RegEx]::Replace($arguments, 'pass:[^\s].*', 'pass:*** '))`n`n"
-
-			# Run command
-			$pinfo = New-Object System.Diagnostics.ProcessStartInfo
-			$pinfo.FileName = "$opensslexe"
-			$pinfo.RedirectStandardError = $true
-			$pinfo.RedirectStandardOutput = $true
-			$pinfo.UseShellExecute = $false
-			$pinfo.Arguments = $arguments
-			$pinfo.WorkingDirectory = Convert-Path .
-			$proc = New-Object System.Diagnostics.Process
-			$proc.StartInfo = $pinfo
-			$proc.Start() | Out-Null
-			$proc.WaitForExit(10000) | Out-Null
-			$stdout = $proc.StandardOutput.ReadToEnd()
-			$stderr = $proc.StandardError.ReadToEnd()
-
-			# Check errors
-			if ($proc.ExitCode) 
+			if (!(Test-Path $CertificateFile))
 			{
-				throw $stderr
-			} 
+				# OpenSSL arguments
+				$arguments = @("req")
 
-			# Verbose output
-			Write-Verbose "Output:`n`n$stdout`n`n"
-			Write-Verbose "Errors:`n`n$stderr`n`n"
+				$arguments += "-new"
+				$rand = Join-Path $env:TEMP "opensslrand"
+				Get-Random | Set-Content $rand
+				$arguments += "-rand"
+				$arguments += "`"$rand`""
+				$arguments += "-extensions"
+				$arguments += "v3_ca"
+				$arguments += "-newkey"
+				$arguments += "rsa:2048bits"
+				$arguments += "-x509"
+
+				$arguments += "-keyout"
+				$arguments += "`"$KeyFile`""
+				
+				$arguments += "-days"
+				$arguments += $ValidDays
+				   
+				$arguments += "-out"
+				$arguments += "`"$CertificateFile`""
+				
+				$arguments += "-subj"
+				$arguments += "`"/C=$Country/ST=$State/L=$City/O=$OrganizationName/OU=/CN=$CommonName/emailAddress=$emailAddress`""
+				$arguments += "-passout"
+				
+				
+				$password = ''
+				$password = (New-Object PSCredential "User",$Passphrase).GetNetworkCredential().Password
+				$arguments += "pass:$password"
+			  
+				# Verbose output
+				Write-Verbose "Command:`n`n$opensslexe $([RegEx]::Replace($arguments, 'pass:[^\s].*', 'pass:*** '))`n`n"
+
+				# Run command
+				$pinfo = New-Object System.Diagnostics.ProcessStartInfo
+				$pinfo.FileName = "$opensslexe"
+				$pinfo.RedirectStandardError = $true
+				$pinfo.RedirectStandardOutput = $true
+				$pinfo.UseShellExecute = $false
+				$pinfo.Arguments = $arguments
+				$pinfo.WorkingDirectory = Convert-Path .
+				$proc = New-Object System.Diagnostics.Process
+				$proc.StartInfo = $pinfo
+				$proc.Start() | Out-Null
+				$proc.WaitForExit(10000) | Out-Null
+				$stdout = $proc.StandardOutput.ReadToEnd()
+				$stderr = $proc.StandardError.ReadToEnd()
+
+				# Check errors
+				if ($proc.ExitCode) 
+				{
+					throw $stderr
+				} 
+
+				# Verbose output
+				Write-Verbose "Output:`n`n$stdout`n`n"
+				Write-Verbose "Errors:`n`n$stderr`n`n"
+			}
+			else
+			{
+				throw "ERROR: CA Certificate $CertificateFile already exists!"
+			}	
 		}
 		else
 		{
@@ -491,55 +498,62 @@ function New-EitSelfSignedCertificate {
 			$OutputPath = $myShortPath.ShortPath
 			$CertificateFile = $OutputPath + "\" + $OutputName + ".crt"
 			
-			# OpenSSL arguments
-			$arguments = @("x509")
-			$arguments += "-req"
-			$arguments += "-in"
-			$arguments += "$CertificateSigningRequest"
-			
-			$arguments += "-CA"
-			$arguments += "$CACertificateFile"
-			$arguments += "-CAkey"
-			$arguments += "$CAKeyFile"
-			$arguments += "-out"
-			$arguments += "$CertificateFile"
-			$arguments += "-days"
-			$arguments += "$ValidDays"
-			$arguments += "-sha256"
-			$arguments += "-passin"
-		
-			$password = ''
-			$password = (New-Object PSCredential "User",$Passphrase).GetNetworkCredential().Password
-			$arguments += "pass:$password"
-			
-
-			# Verbose output
-			Write-Verbose "Command:`n`n$opensslexe $([RegEx]::Replace($arguments, 'pass:[^\s].*', 'pass:*** '))`n`n"
-
-			# Run command
-			$pinfo = New-Object System.Diagnostics.ProcessStartInfo
-			$pinfo.FileName = "$opensslexe"
-			$pinfo.RedirectStandardError = $true
-			$pinfo.RedirectStandardOutput = $true
-			$pinfo.UseShellExecute = $false
-			$pinfo.Arguments = $arguments
-			$pinfo.WorkingDirectory = Convert-Path .
-			$proc = New-Object System.Diagnostics.Process
-			$proc.StartInfo = $pinfo
-			$proc.Start() | Out-Null
-			$proc.WaitForExit(10000) | Out-Null
-			$stdout = $proc.StandardOutput.ReadToEnd()
-			$stderr = $proc.StandardError.ReadToEnd()
-
-			# Check errors
-			if ($proc.ExitCode) 
+			if (!(Test-Path $CertificateFile))
 			{
-				throw $stderr
-			} 
+				# OpenSSL arguments
+				$arguments = @("x509")
+				$arguments += "-req"
+				$arguments += "-in"
+				$arguments += "$CertificateSigningRequest"
+				
+				$arguments += "-CA"
+				$arguments += "$CACertificateFile"
+				$arguments += "-CAkey"
+				$arguments += "$CAKeyFile"
+				$arguments += "-out"
+				$arguments += "$CertificateFile"
+				$arguments += "-days"
+				$arguments += "$ValidDays"
+				$arguments += "-sha256"
+				$arguments += "-passin"
+			
+				$password = ''
+				$password = (New-Object PSCredential "User",$Passphrase).GetNetworkCredential().Password
+				$arguments += "pass:$password"
+				
 
-			# Verbose output
-			Write-Verbose "Output:`n`n$stdout`n`n"
-			Write-Verbose "Errors:`n`n$stderr`n`n"
+				# Verbose output
+				Write-Verbose "Command:`n`n$opensslexe $([RegEx]::Replace($arguments, 'pass:[^\s].*', 'pass:*** '))`n`n"
+
+				# Run command
+				$pinfo = New-Object System.Diagnostics.ProcessStartInfo
+				$pinfo.FileName = "$opensslexe"
+				$pinfo.RedirectStandardError = $true
+				$pinfo.RedirectStandardOutput = $true
+				$pinfo.UseShellExecute = $false
+				$pinfo.Arguments = $arguments
+				$pinfo.WorkingDirectory = Convert-Path .
+				$proc = New-Object System.Diagnostics.Process
+				$proc.StartInfo = $pinfo
+				$proc.Start() | Out-Null
+				$proc.WaitForExit(10000) | Out-Null
+				$stdout = $proc.StandardOutput.ReadToEnd()
+				$stderr = $proc.StandardError.ReadToEnd()
+
+				# Check errors
+				if ($proc.ExitCode) 
+				{
+					throw $stderr
+				} 
+
+				# Verbose output
+				Write-Verbose "Output:`n`n$stdout`n`n"
+				Write-Verbose "Errors:`n`n$stderr`n`n"
+			}
+			else
+			{
+				throw "ERROR: Certificate $CertificateFile already exists!"
+			}	
 		}
 		else
 		{
