@@ -41,6 +41,10 @@
 #													Get-EitAzSessionHostsByHostPool, Get-EitAzUserSessionsByHostPool, Send-EitAzUserMessage, 
 #													Disconnect-EitAzUserSession, Remove-EitAzUserSession)
 #			V2.2.0  - 26.09.2024 - M. Trojahn - Add CertificateFunctions.ps1
+#			V2.2.1  - 03.10.2024 - M. Trojahn - CitrixFunctions.ps1: Error check if Machine not found in ProvisioningSchemeName in Function Remove-EitProvVM,
+#  												Return success even if ProvVM doesn't exists in Get-EitCitrixMachineInfo
+#  												add more information: ProvVM, AcctADAccount & BrokerMachine in Function Get-EitCitrixMachineInfo
+#												do some code style cleanup
 #
 ###############################################################################################
 
@@ -50,7 +54,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '2.2.0'
+ModuleVersion = '2.2.1'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()

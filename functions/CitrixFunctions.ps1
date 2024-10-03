@@ -1,8 +1,8 @@
 #
 # CitrixFunctions.ps1
 # ===========================================================================
-# (c)2023 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.15
+# (c)2024 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
+# Version 1.19
 #
 # Citrix Functions for Raptor Scripts
 #
@@ -25,7 +25,10 @@
 #  V1.14 - 12.12.2023 - M.Trojahn - add Logger to Stop-EitBrokerSession
 #  V1.15 - 20.12.2023 - M.Trojahn - add full site data to Get-EitSiteInfo
 #  V1.16 - 22.05.2024 - M.Trojahn - check if $OSType = $null in Get-EitBrokerMachines
-#
+#  V1.17 - 30.09.2024 - M.Trojahn - Error check if Machine not found in ProvisioningSchemeName in Function Remove-EitProvVM
+#  V1.18 - 01.10.2024 - M.Trojahn - Return success even if ProvVM doesn't exists in Get-EitCitrixMachineInfo
+#  V1.19 - 03.10.2024 - M.Trojahn - add more information: ProvVM, AcctADAccount & BrokerMachine in Function Get-EitCitrixMachineInfo
+#									do some code style cleanup
 #
 
 
@@ -66,41 +69,50 @@ function Get-EitFarmServers {
 	$StatusMessage = "Error while reading machine list!"
 	
 	$DSNfile = "C:\Program Files (x86)\Citrix\Independent Management Architecture\MF20.dsn"
-	try {
+	try 
+	{
 		if (Test-Path $DSNfile) { $FarmType = "XenApp" }
 	
-		foreach ($item in $FarmEntryPoints) {
-			if (Test-EitPort -server $item -port 5985 -timeout "1000") {
+		foreach ($item in $FarmEntryPoints) 
+		{
+			if (Test-EitPort -server $item -port 5985 -timeout "1000") 
+			{
 				$Session = New-PSSession -ComputerName $item -ErrorAction stop 
 				$DSNCheck = Invoke-Command -Session $Session -ScriptBlock {Test-Path $args[0]} -ArgumentList $DSNfile
-				If ($DSNCheck -eq $true) { $FarmType = "XenApp" }
-				if ($FarmType -eq "XenApp") {
+				if ($DSNCheck -eq $true) { $FarmType = "XenApp" }
+				if ($FarmType -eq "XenApp") 
+				{
 					Invoke-Command -Session $Session -ScriptBlock {Add-PSSnapin citrix.xenapp.commands} -ErrorAction stop
 					$XAServers = Invoke-Command -Session $Session -ScriptBlock {Get-XAServer | Select Servername}
 					Remove-PSSession -Session $Session
-					foreach ($XAServer in $XAServers) {
+					foreach ($XAServer in $XAServers) 
+					{
 						$MachineList += $XAServers.Servername
 					}
 					$StatusMessage = "Successfully read machine list..."
 					$bSuccess = $true
 				}
-				else {
+				else 
+				{
 					Invoke-Command -Session $Session -ScriptBlock {Add-PSSnapin citrix*} -ErrorAction stop
 					$XDMachines = Invoke-Command -Session $Session -ScriptBlock {Get-BrokerMachine -MaxRecordCount 10000 | Select DNSName} 
 					Remove-PSSession -Session $Session
-					foreach ($XDMachine in $XDMachines) {
+					foreach ($XDMachine in $XDMachines) 
+					{
 						$MachineList += $XDMachine.DNSName
 					}
 					$StatusMessage = "Successfully read machine list..."
 					$bSuccess = $true
 				}
 			}
-			else {
+			else 
+			{
 				throw "ERROR, server $item is not reachable"
 			}
 		}
 	}
-	catch {
+	catch 
+	{
 		$bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
@@ -147,7 +159,8 @@ function Get-EitBrokerMachines {
 	$bSuccess = $false
 	$StatusMessage = "Error while reading machine list!"
 	
-	function Make-EITSBrokerMachineData($DNSName, $MachineName, $SessionSupport, $OSType) {
+	function Make-EITSBrokerMachineData($DNSName, $MachineName, $SessionSupport, $OSType) 
+	{
 		$out = New-Object psobject
 		$out | add-member -type noteproperty -name DNSName $DNSName.ToLower()
 		$out | add-member -type noteproperty -name MachineName $MachineName.ToLower()
@@ -230,7 +243,8 @@ function Get-EitFarmSessions {
 	) 
 	
 	
-	function Make-EITSessionDataData($UserName, $ServerName) {
+	function Make-EITSessionDataData($UserName, $ServerName) 
+	{
 		$out = New-Object psobject
 		$out | add-member -type noteproperty -name UserName $UserName
 		$out | add-member -type noteproperty -name ServerName $ServerName
@@ -246,39 +260,47 @@ function Get-EitFarmSessions {
 	$DSNfile = "C:\Program Files (x86)\Citrix\Independent Management Architecture\MF20.dsn"
 	try {
 		if (Test-Path $DSNfile) { $FarmType = "XenApp" }
-		foreach ($item in $FarmEntryPoints) {
-			if (Test-EitPort -server $item -port 5985 -timeout "1000") {
+		foreach ($item in $FarmEntryPoints) 
+		{
+			if (Test-EitPort -server $item -port 5985 -timeout "1000") 
+			{
 				$Session = New-PSSession -ComputerName $item -ErrorAction stop 
 				$DSNCheck = Invoke-Command -Session $Session -ScriptBlock {Test-Path $args[0]} -ArgumentList $DSNfile
-				If ($DSNCheck -eq $true) { $FarmType = "XenApp" }
-				if ($FarmType -eq "XenApp") {
+				if ($DSNCheck -eq $true) { $FarmType = "XenApp" }
+				if ($FarmType -eq "XenApp") 
+				{
 					Invoke-Command -Session $Session -ScriptBlock {Add-PSSnapin citrix.xenapp.commands} -ErrorAction stop
 					$XASessions = Invoke-Command -Session $Session -ScriptBlock {Get-XASession -Farm | select accountname, servername}
 					Remove-PSSession -Session $Session
-					foreach ($XASession in $XASessions) {
+					foreach ($XASession in $XASessions) 
+					{
 						$SessionList += (Make-EITSessionDataData -UserName $XASession.AccountName -ServerName $XASession.ServerName)
 					}
 					
 					$StatusMessage = "Successfully read session list..."
 					$bSuccess = $true
 				}
-				else {
+				else 
+				{
 					Invoke-Command -Session $Session -ScriptBlock {Add-PSSnapin citrix*} -ErrorAction stop
 					$XDSessions = Invoke-Command -Session $Session -ScriptBlock {Get-BrokerSession -MaxRecordCount 100000 | Select DNSName, UserName} 
 					Remove-PSSession -Session $Session
-					foreach ($XDSession in $XDSessions) {
+					foreach ($XDSession in $XDSessions) 
+					{
 						$SessionList += (Make-EITSessionDataData -UserName $XDSession.UserName -ServerName $XDSession.DNSName)
 					}
 					$StatusMessage = "Successfully read session list..."
 					$bSuccess = $true
 				}
 			}
-			else {
+			else 
+			{
 				throw "Server $item is not reachable"
 			}
 		}
 	}
-	catch {
+	catch 
+	{
 		$bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
@@ -331,20 +353,16 @@ function Get-EitCitrixLicenseInformation {
 		$out
 	}
 	
-	try {
+	try 
+	{
 		$Session = New-PSSession -ComputerName $LicenseServer -ErrorAction stop 
 		Invoke-Command -Session $Session -ScriptBlock {Add-PSSnapin Citrix.Licensing.Admin.V1} -ErrorAction stop
 		
 		$AllLicense = Invoke-Command -Session $Session -ScriptBlock {
-			
-			
-			
 			$AdminAddress = "https://" + $args[0] + ":" + $args[1]
 			$LicCert = Get-LicCertificate -AdminAddress $AdminAddress
 			$AllLicense = Get-LicInventory -AdminAddress $AdminAddress -CertHash $LicCert.CertHash
 			$AllLicense
-
-			
 		} -ArgumentList $LicenseServer, $LicenseServerPort
 		
 		Remove-PSSession -Session $Session	
@@ -354,25 +372,32 @@ function Get-EitCitrixLicenseInformation {
 		$LicenseInfo = @()
 		$bSuccess = $true
 		$StatusMessage = "Successfully get license info!"
-		foreach ($License in $AllLicense) {
+		foreach ($License in $AllLicense) 
+		{
 			$LicenseProductName = $License.LocalizedLicenseProductName
 			$InUse = $License.licensesinuse
 			$Available = $License.LicensesAvailable
 			
-			if ($LicInUse.ContainsKey($LicenseProductName)) {
-				if ($LicInUse.Get_Item($LicenseProductName) -le $InUse) {
+			if ($LicInUse.ContainsKey($LicenseProductName)) 
+			{
+				if ($LicInUse.Get_Item($LicenseProductName) -le $InUse) 
+				{
 					$LicInUse.Set_Item($LicenseProductName, $InUse)
 				}
 			}
-			else {
+			else 
+			{
 				$LicInUse.add($LicenseProductName, $InUse)
 			}
-			if ($LicAvailable.ContainsKey($LicenseProductName)) {
-				if ($LicAvailable.Get_Item($LicenseProductName) -le $Available) {
+			if ($LicAvailable.ContainsKey($LicenseProductName)) 
+			{
+				if ($LicAvailable.Get_Item($LicenseProductName) -le $Available) 
+				{
 					$LicAvailable.Set_Item($LicenseProductName, $Available)
 				}
 			}
-			else {
+			else 
+			{
 					$LicAvailable.add($LicenseProductName, $Available)
 			}
 		}	
@@ -381,18 +406,18 @@ function Get-EitCitrixLicenseInformation {
 		
 		#Output license usage for each type.
 		$LicenseTypeOutput = $LicInUse.Keys
-		Foreach ($Type in $LicenseTypeOutput) {
+		foreach ($Type in $LicenseTypeOutput) 
+		{
 			$OutPutLicInUse = $LicInUse.Get_Item($Type)
 			$OutPutAvail = $LicAvailable.Get_Item($Type)
 			$LicenseInfo += (Make-EITLicenseData -LicenseServer $LicenseServer -LicenseProductName $Type -Available $OutPutAvail -InUse $OutPutLicInUse)
 		} 
 	}
-	catch {
+	catch 
+	{
 		$bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
-	
-	
 	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;LicenseInfo=$LicenseInfo})
 	return $ReturnObject
 }
@@ -432,8 +457,10 @@ function Get-EitCitrixLicenseServer {
 	$bSuccess = $true
 	$StatusMessage = "Successfuly get license server!"
 	
-	try {
-		foreach ($item in $FarmEntryPoints) {
+	try 
+	{
+		foreach ($item in $FarmEntryPoints) 
+		{
 			$Session = New-PSSession -ComputerName $item -ErrorAction stop 
 			Invoke-Command -Session $Session -ScriptBlock {Add-PSSnapin citrix*} -ErrorAction stop
 			$SiteConfig = Invoke-Command -Session $Session -ScriptBlock {Get-ConfigSite}
@@ -441,7 +468,8 @@ function Get-EitCitrixLicenseServer {
 			$LicenseServer += $SiteConfig.LicenseServerName
 		}
 	}	
-	catch {
+	catch 
+	{
 		$bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
@@ -482,14 +510,17 @@ function Get-EitSiteInfo {
 	$bSuccess = $true
 	$StatusMessage = "Successfuly get site info!"
 	
-	try {
-		foreach ($item in $DDCAddress) {
+	try 
+	{
+		foreach ($item in $DDCAddress) 
+		{
 			$Session = New-PSSession -ComputerName $item -ErrorAction stop 
 			Invoke-Command -Session $Session -ScriptBlock {Add-PSSnapin citrix*} -ErrorAction stop
 			#$SiteName = (Invoke-Command -Session $Session -ScriptBlock {Get-BrokerSite}).Name
 			$CTXSite = Invoke-Command -Session $Session -ScriptBlock {Get-BrokerSite}
 			$Controllers = Invoke-Command -Session $Session -ScriptBlock {Get-BrokerController}
-			foreach ($Controller in $Controllers) {
+			foreach ($Controller in $Controllers) 
+			{
 				$ControllerInfo += ([pscustomobject]@{Controller=$Controller.DNSName;ControllerVersion=$Controller.ControllerVersion})
 			}
 			
@@ -500,7 +531,8 @@ function Get-EitSiteInfo {
 		}
 		
 	}	
-	catch {
+	catch 
+	{
 		$bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
@@ -520,56 +552,72 @@ function Get-EitCitrixMachineInfo {
 			has to be in the format 'DomainName\ComputerName
 			
 		.Parameter DDCAddress
-			Specifies the address of a XenDesktop controller to which the PowerShell snap-in connects.
+			Indicates the address of a XenDesktop controller to which the PowerShell snap-in is connected.
 		
 		.EXAMPLE
 			Get-EitCitrixMachineInfo -MachineName MyDomain\MyComputerName -DDCAddress MyDDC
 			
 		.NOTES  
-			Copyright	:	(c)2019 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Copyright	:	(c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.4
 			
 			History:
 				V1.0 - 11.11.2019 - M.Trojahn - Initial creation
 				V1.0 - 11.02.2020 - M.Trojahn - Add Tags
+				V1.3 - 01.10.2024 - M.Trojahn - Return success even if ProvVM doesn't exists
+				V1.4 - 03.10.2024 - M.Trojahn - add more information: ProvVM, AcctADAccount & BrokerMachine
 	#>	
 	Param ( 
 			[Parameter(Mandatory=$true)] [string] $MachineName, 
 			[Parameter(Mandatory=$true)] [string] $DDCAddress
 		) 
-	If ([Regex]::Matches($MachineName, "\\").Count -ne 0) {	
+	if ([Regex]::Matches($MachineName, "\\").Count -ne 0) 
+	{	
 		$tmp = $MachineName.Split("\")
 		$DomainName = $tmp[0]
 		$MachineName = $tmp[1]	
 		$bSuccess = $true
-		$StatusMessage = "Successfuly get machine info"
-		$MyBrokerMachine = $Null
+		$StatusMessage = "Successfully obtained machine information"
+		$MyBrokerMachine = $null
 		$bActivePersonalVDisk = $false
 		Add-pssnapin citrix.*
 		$MyBrokerMachine = Get-BrokerMachine -MachineName ($DomainName + "\" + $MachineName) -AdminAddress $DDCAddress -ErrorAction SilentlyContinue
-		If ($MyBrokerMachine -eq $Null) {
+		if ($MyBrokerMachine -eq $null) 
+		{
 			$bSuccess = $false
 			$StatusMessage =  "ERROR: Machine $MachineName does not exists!"
 		}
-		$MyProvVM = $Null
+		$MyProvVM = $null
 		$MyProvVM = Get-ProvVM -VMName $MachineName -AdminAddress $DDCAddress -ErrorAction SilentlyContinue
-		If ($MyProvVM -eq $Null) {
-			$bSuccess = $false
-			$StatusMessage =  "ERROR: ProvVm $MachineName does not exists!"
+		if ($MyProvVM -eq $null) 
+		{
+			<# $bSuccess = $false
+			$StatusMessage =  "ERROR: ProvVm $MachineName does not exists!" #>
+			$bActivePersonalVDisk = $false
+			$MyProvVM = "n/a"
 		}
-		else {
-			If ($MyProvVM.PersonalVDiskIndex -ne $Null) {
-				$bActivePersonalVDisk = $True
+		else 
+		{
+			if ($MyProvVM.PersonalVDiskIndex -ne $null) 
+			{
+				$bActivePersonalVDisk = $true
 			}
-			else {
+			else 
+			{
 				$bActivePersonalVDisk = $false
-			}	
+			}
+			
 		}
+		$myDNSDomainName = $MyBrokerMachine.DNSName.Replace(($MyBrokerMachine.PublishedName + "."),"")
+		$EitADComputer = Get-EitADComputer -ComputerName $MyBrokerMachine.PublishedName -DNSDomainName $myDNSDomainName
+		$myAcctADAccount = Get-AcctADAccount -ADAccountSid $EitADComputer.ADObject.SID.Value -AdminAddress $DDCAddress -ErrorAction SilentlyContinue
+		
 	}	
-	else {
+	else 
+	{
 		throw "MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'"
 	}	
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;MachineName=$MyBrokerMachine.MachineName;DDC=$DDCAddress;CatalogName=$MyBrokerMachine.CatalogName;DesktopGroupName=$MyBrokerMachine.DesktopGroupName;AssociatedUserNames=$MyBrokerMachine.AssociatedUserNames;ProvisioningType=$MyBrokerMachine.ProvisioningType;ActivePersonalVDisk=$bActivePersonalVDisk;Tags=$MyBrokerMachine.Tags})
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;MachineName=$MyBrokerMachine.MachineName;DDC=$DDCAddress;CatalogName=$MyBrokerMachine.CatalogName;DesktopGroupName=$MyBrokerMachine.DesktopGroupName;AssociatedUserNames=$MyBrokerMachine.AssociatedUserNames;ProvisioningType=$MyBrokerMachine.ProvisioningType;ActivePersonalVDisk=$bActivePersonalVDisk;Tags=$MyBrokerMachine.Tags;AcctADAccount=$myAcctADAccount;ProvVM=$MyProvVM;BrokerMachine=$MyBrokerMachine})
 	return $ReturnObject
 }
 
@@ -602,11 +650,12 @@ function Remove-EitProvVM {
 			Remove-EitProvVM -MachineName MyDomain\MyComputerName -CatalogName MyCatalogName -DDCAddress MyDDC -Logger MyLogger
 			
 		.NOTES  
-			Copyright	:	(c)2019 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Copyright	:	(c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.1
 			
 			History:
 				V1.0 - 11.11.2019 - M.Trojahn - Initial creation
+				V1.1 - 30.09.2024 - M.Trojahn - Error check if Machine not found in ProvisioningSchemeName
 	#>	
 
 
@@ -617,10 +666,12 @@ function Remove-EitProvVM {
 			[Parameter(Mandatory=$true)] [Object[]] $Logger,
 			[Parameter(Mandatory=$false)] [boolean] $EnableDebug
 	) 
-	if ($EnableDebug) {		
+	if ($EnableDebug) 
+	{		
 			$Logger.Debug("Command: New-EitProvVM -MachineName " + $MachineName + " -CatalogName " + $CatalogName + " -DDCAddress " + $DDCAddress + " -Logger " +  $Logger + " -EnableDebug " + $EnableDebug)
 	}
-	If ([Regex]::Matches($MachineName, "\\").Count -ne 0) {
+	if ([Regex]::Matches($MachineName, "\\").Count -ne 0) 
+	{
 		$succeeded = $false
 		$tmp = $MachineName.Split("\")
 		$DomainName = $tmp[0]
@@ -629,12 +680,15 @@ function Remove-EitProvVM {
 		$TestVM = $Null
 		$Logger.Info("Testing machine $MachineName in Catalog $CatalogName")
 		$TestVM = Get-BrokerMachine -CatalogName $CatalogName -MachineName ($DomainName + "\" + $MachineName) -AdminAddress $DDCAddress -ErrorAction SilentlyContinue
-		If ($TestVM -ne $Null) {
-			try {
+		if ($TestVM -ne $Null) 
+		{
+			try 
+			{
 				Add-PSSnapin citrix.*
 				
 				$svcStatus = Get-ConfigServiceStatus  -AdminAddress $DDCAddress
-				if ($svcStatus -ne "OK") {
+				if ($svcStatus -ne "OK") 
+				{
 					$Logger.Error("Problem with $DDCAddress, ConfigServiceStatus is $svcStatus")
 					throw "Problem with $DDCAddress, ConfigServiceStatus is $svcStatus"
 				}
@@ -643,11 +697,13 @@ function Remove-EitProvVM {
 				# http://support.citrix.com/proddocs/topic/citrix-configurationlogging-admin-v1-xd75/get-logsite-xd75.html
 				# TODO: exit if logging is not available
 				$logState = Get-LogSite  -AdminAddress $ddcAddress 
-				if ($logState.State -ne "Enabled") {
+				if ($logState.State -ne "Enabled") 
+				{
 					$Logger.Error("Problem with $DDCAddress, Logging state is $($logState.State)")
 					throw "Problem with $DDCAddress, Logging state is $($logState.State)"
 				}
-				if ($EnableDebug) {
+				if ($EnableDebug) 
+				{
 					$Logger.Debug("Get Broker Machine $DomainName\$MachineName -AdminAddress $DDCAddress")
 				}	
 				$Logger.Info("Get machine info for machine $DomainName\$MachineName")
@@ -657,25 +713,30 @@ function Remove-EitProvVM {
 				Set-BrokerCatalogMetadata  -AdminAddress $DDCAddress -CatalogName $MyMachine.CatalogName  -LoggingId $HighLevelOp.Id -Name 'Remove-EitProvVM_Status' -Value "Getting Machine"
 				
 				$Logger.Info("Testing MaintMode")
-				IF (!$MyMachine.InMaintenanceMode) {
+				iF (!$MyMachine.InMaintenanceMode) 
+				{
 					$Logger.Info("Machine is not in MaintMode, enableing MaintMode...")
 					Set-BrokerMachine $MyMachine -InMaintenanceMode $true -AdminAddress $DDCAddress
 				}
-				else {
+				else 
+				{
 					$Logger.Info("Machine is in MaintMode, nothing to do, continue...")
 				}
 
 				$Logger.Info("Checking PowerState...")
-				if ($MyMachine.Powerstate -eq "On") {
+				if ($MyMachine.Powerstate -eq "On") 
+				{
 					$Logger.Info("Machine is ON, stopping Machine")
 					$BrokerHostingPowerAction = New-BrokerHostingPowerAction -Action TurnOff -MachineName $MyMachine.MachineName -AdminAddress $DDCAddress
-					if ($EnableDebug) {
+					if ($EnableDebug) 
+					{
 						$Logger.Debug("BrokerHostingPowerAction UID: " + $BrokerHostingPowerAction.UID)
 					}
 					$i = 0
 					$TimeOut = 600
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
-					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) {
+					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) 
+					{
 						$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 						$Logger.Info("BrokerHostingPowerAction state of machine " + $MyMachine.MachineName + " is $BrokerHostingPowerActionState, waiting for completion... ($i / $TimeOut)")
 						Start-Sleep -Milliseconds 5000
@@ -683,74 +744,265 @@ function Remove-EitProvVM {
 					}
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 					
-					if ($BrokerHostingPowerActionState -eq "Completed") {
+					if ($BrokerHostingPowerActionState -eq "Completed") 
+					{
 						$return = 0
 					}
-					else {
+					else 
+					{
 						$Logger.Error("TimeOut reached, while turning off VDI!")
 						Throw "TimeOut reached, while turning off VDI!"
 					}
 				}
-				else {
+				else 
+				{
 					$Logger.Info("Machine is Off, nothing to do, continue...")
 				}
 				$Logger.Info("Getting ProvVM")
 				Set-BrokerCatalogMetadata  -AdminAddress $DDCAddress -CatalogName $MyMachine.CatalogName  -LoggingId $HighLevelOp.Id -Name 'EducateIT_RemoveVDI_Status' -Value "Getting ProvVM"
+				$MyProvVM = $Null
 				$MyProvVM = Get-ProvVM  -AdminAddress $DDCAddress -ProvisioningSchemeName $MyMachine.CatalogName  -VMName $MachineName
-				
-				$Logger.Info("Unlock VM")
-				Unlock-ProvVM  -AdminAddress $DDCAddress -LoggingId $HighLevelOp.Id -ProvisioningSchemeName $MyMachine.CatalogName  -VMID $MyProvVM.VMId
-				
-				
-				Set-BrokerCatalogMetadata  -AdminAddress $DDCAddress -CatalogName $MyMachine.CatalogName  -LoggingId $HighLevelOp.Id -Name 'EducateIT_RemoveVDI_Status' -Value "Remove ProvVM"
-				$Logger.Info("Remove ProvVM - Deleting from Hypervisor")
-				$rc = Remove-ProvVM  -AdminAddress $DDCAddress -LoggingId $HighLevelOp.Id -ProvisioningSchemeName $MyMachine.CatalogName  -VMName $MachineName -RunAsynchronously
-				$ProvTask = Get-ProvTask -TaskId $rc.Guid
-				$i = 0
-				$TimeOut = 600
-				while (($ProvTask.Status -ne "Finished") -and ($i -lt $TimeOut)) {
-						$ProvTask = Get-ProvTask -TaskId $rc.Guid
-						$Logger.Info("Status of Task Remove-ProvVM for machine " + $MyMachine.MachineName + " is " + $ProvTask.Status + ", waiting for completion... ($i / $TimeOut)")
-						Start-Sleep -Milliseconds 5000
-						$i++
+				if ($MyProvVM -ne $Null)
+				{
+					$Logger.Info("Unlock VM")
+					Unlock-ProvVM  -AdminAddress $DDCAddress -LoggingId $HighLevelOp.Id -ProvisioningSchemeName $MyMachine.CatalogName  -VMID $MyProvVM.VMId
+					
+					
+					Set-BrokerCatalogMetadata  -AdminAddress $DDCAddress -CatalogName $MyMachine.CatalogName  -LoggingId $HighLevelOp.Id -Name 'EducateIT_RemoveVDI_Status' -Value "Remove ProvVM"
+					$Logger.Info("Remove ProvVM - Deleting from Hypervisor")
+					$rc = Remove-ProvVM  -AdminAddress $DDCAddress -LoggingId $HighLevelOp.Id -ProvisioningSchemeName $MyMachine.CatalogName  -VMName $MachineName -RunAsynchronously
+					$ProvTask = Get-ProvTask -TaskId $rc.Guid
+					$i = 0
+					$TimeOut = 600
+					while (($ProvTask.Status -ne "Finished") -and ($i -lt $TimeOut)) 
+					{
+							$ProvTask = Get-ProvTask -TaskId $rc.Guid
+							$Logger.Info("Status of Task Remove-ProvVM for machine " + $MyMachine.MachineName + " is " + $ProvTask.Status + ", waiting for completion... ($i / $TimeOut)")
+							Start-Sleep -Milliseconds 5000
+							$i++
+					}
+					
+					$ProvTask = Get-ProvTask -TaskId $rc.Guid
+					if ($ProvTask.Status -ne "Finished") 
+					{
+						$Logger.Error("TimeOut reached, while while waiting for vm removal!")
+						Throw "TimeOut reached, while waiting for for vm removal!"
+					}
+					
+					# to do error check
+					$Logger.Info("Remove BrokerMachine from DesktopGroup " + $MyMachine.DesktopGroupName + "(" + $MyMachine.DesktopGroupUid + ")")
+					$rc = Remove-BrokerMachine -AdminAddress $DDCAddress -LoggingId $HighLevelOp.Id -DesktopGroup $MyMachine.DesktopGroupUid -Force -InputObject $MyMachine
+					# to do error check
+					
+					$Logger.Info("Remove BrokerMachine from Catalog " + $MyMachine.CatalogName + "(" + $MyMachine.CatalogUid + ")")
+					Remove-BrokerMachine -AdminAddress $DDCAddress -LoggingId $HighLevelOp.Id -Force -InputObject $MyMachine
+					
+					$succeeded = $true
+					Stop-LogHighLevelOperation -AdminAddress $DDCAddress -HighLevelOperationId $HighLevelOp.Id -IsSuccessful $succeeded
+					$Logger.Info("Seccessfuly removed machine $MachineName")
 				}
-				
-				$ProvTask = Get-ProvTask -TaskId $rc.Guid
-				if ($ProvTask.Status -ne "Finished") {
-					$Logger.Error("TimeOut reached, while while waiting for vm removal!")
-					Throw "TimeOut reached, while waiting for for vm removal!"
+				else
+				{
+					throw ("Machine $MachineName not found in ProvisioningSchemeName " + $MyMachine.CatalogName)
 				}
-				
-				
-				# to do error check
-				$Logger.Info("Remove BrokerMachine from DesktopGroup " + $MyMachine.DesktopGroupName + "(" + $MyMachine.DesktopGroupUid + ")")
-				$rc = Remove-BrokerMachine -AdminAddress $DDCAddress -LoggingId $HighLevelOp.Id -DesktopGroup $MyMachine.DesktopGroupUid -Force -InputObject $MyMachine
-				# to do error check
-				
-				$Logger.Info("Remove BrokerMachine from Catalog " + $MyMachine.CatalogName + "(" + $MyMachine.CatalogUid + ")")
-				Remove-BrokerMachine -AdminAddress $DDCAddress -LoggingId $HighLevelOp.Id -Force -InputObject $MyMachine
-				
-				$succeeded = $true
-				Stop-LogHighLevelOperation -AdminAddress $DDCAddress -HighLevelOperationId $HighLevelOp.Id -IsSuccessful $succeeded
-				$Logger.Info("Seccessfuly removed machine $MachineName")
 			}
-			catch [System.Exception] {
+			catch [System.Exception] 
+			{
 				$succeeded = $false
 				$Logger.Error("Problem while removing machine " + $MachineName + ": " + $_ )
 				throw $_
 			}
-			finally {
+			finally 
+			{
 				# Log high level operation stop, and indicate its success
 				# http://support.citrix.com/proddocs/topic/citrix-configurationlogging-admin-v1-xd75/start-loghighleveloperation-xd75.html
 				<# Stop-LogHighLevelOperation  -AdminAddress $DDCAddress -HighLevelOperationId $HighLevelOp.Id -IsSuccessful $succeeded #>
 			}
 		}
-		else {
+		else 
+		{
 			$Logger.Error("Machine $MachineName does not exists! Cannot remove this machine!")
 			throw "ERROR: Machine $MachineName does not exists! Cannot remove this machine!"
 		}
 	}	
-	else {
+	else 
+	{
+		$Logger.Error("MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'")
+		throw "MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'"
+	}
+}
+
+function Remove-EitBrokerMachine {
+	<#
+	.Synopsis
+			Removes a VM from desktop group and catalog.
+			
+		.Description
+			Removes a VM from desktop group and catalog.
+		
+		.Parameter MachineName
+			The machine name to remove
+			has to be in the format 'DomainName\ComputerName
+			
+		.Parameter DDCAddress
+			Specifies the address of a XenDesktop controller to which the PowerShell snap-in connects.
+			
+		.Parameter DesktopGroup
+			The name of the DesktopGroup from which the machine should be removed.
+		
+		.Parameter Logger
+			The EducateIT FileLogger object
+			Has to be created before with the New-EitFileLogger command
+			
+		.Parameter Debug
+			Enables the debug log
+		
+		.EXAMPLE
+			Remove-EitBrokerMachine -MachineName MyDomain\MyComputerName -DesktopGroup myDesktopGroup -DDCAddress MyDDC -Logger MyLogger
+			
+		.NOTES  
+			Copyright	:	(c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.0
+			
+			History:
+				V1.0 - 30.09.2024 - M.Trojahn - Initial creation
+				
+	#>	
+
+
+	Param ( 
+			[Parameter(Mandatory=$true)] [string]  $MachineName, 
+			[Parameter(Mandatory=$true)] [string]  $DesktopGroup,
+			[Parameter(Mandatory=$true)] [string]  $CatalogName,
+			[Parameter(Mandatory=$true)] [string]  $DDCAddress,
+			[Parameter(Mandatory=$true)] [Object[]] $Logger,
+			[Parameter(Mandatory=$false)] [boolean] $EnableDebug
+	) 
+	if ($EnableDebug) 
+	{		
+			$Logger.Debug("Command: Remove-EitBrokerMachine -MachineName " + $MachineName + " -DesktopGroup " + $DesktopGroup + " -DDCAddress " + $DDCAddress + " -Logger " +  $Logger + " -EnableDebug " + $EnableDebug)
+	}
+	if ([Regex]::Matches($MachineName, "\\").Count -ne 0) 
+	{
+		$succeeded = $false
+		$tmp = $MachineName.Split("\")
+		$DomainName = $tmp[0]
+		$MachineName = $tmp[1]
+		
+		$TestVM = $Null
+		$Logger.Info("Testing machine $MachineName in Catalog $CatalogName")
+		$TestVM = Get-BrokerMachine -CatalogName $CatalogName -MachineName ($DomainName + "\" + $MachineName) -AdminAddress $DDCAddress -ErrorAction SilentlyContinue
+		if ($TestVM -ne $Null) 
+		{
+			try 
+			{
+				Add-PSSnapin citrix.*
+				$svcStatus = Get-ConfigServiceStatus  -AdminAddress $DDCAddress
+				if ($svcStatus -ne "OK") 
+				{
+					$Logger.Error("Problem with $DDCAddress, ConfigServiceStatus is $svcStatus")
+					throw "Problem with $DDCAddress, ConfigServiceStatus is $svcStatus"
+				}
+
+				# Query availability of logging
+				# http://support.citrix.com/proddocs/topic/citrix-configurationlogging-admin-v1-xd75/get-logsite-xd75.html
+				# TODO: exit if logging is not available
+				$logState = Get-LogSite  -AdminAddress $ddcAddress 
+				if ($logState.State -ne "Enabled") 
+				{
+					$Logger.Error("Problem with $DDCAddress, Logging state is $($logState.State)")
+					throw "Problem with $DDCAddress, Logging state is $($logState.State)"
+				}
+				if ($EnableDebug) 
+				{
+					$Logger.Debug("Get Broker Machine $DomainName\$MachineName -AdminAddress $DDCAddress")
+				}	
+				$Logger.Info("Get machine info for machine $DomainName\$MachineName")
+				$MyMachine = Get-BrokerMachine -MachineName ($DomainName + "\" + $MachineName) -AdminAddress $DDCAddress
+				
+				$HighLevelOp =  Start-LogHighLevelOperation  -AdminAddress $DDCAddress -Source "Remove-EitProvVM" -Text "Remove Machine $MachineName from Catalog $MyMachine.CatalogName "
+				Set-BrokerCatalogMetadata  -AdminAddress $DDCAddress -CatalogName $MyMachine.CatalogName  -LoggingId $HighLevelOp.Id -Name 'Remove-EitProvVM_Status' -Value "Getting Machine"
+				
+				$Logger.Info("Testing MaintMode")
+				if (!$MyMachine.InMaintenanceMode) 
+				{
+					$Logger.Info("Machine is not in MaintMode, enableing MaintMode...")
+					Set-BrokerMachine $MyMachine -InMaintenanceMode $true -AdminAddress $DDCAddress
+				}
+				else 
+				{
+					$Logger.Info("Machine is in MaintMode, nothing to do, continue...")
+				}
+
+				$Logger.Info("Checking PowerState...")
+				if ($MyMachine.Powerstate -eq "On") 
+				{
+					$Logger.Info("Machine is ON, stopping Machine")
+					$BrokerHostingPowerAction = New-BrokerHostingPowerAction -Action TurnOff -MachineName $MyMachine.MachineName -AdminAddress $DDCAddress
+					if ($EnableDebug) 
+					{
+						$Logger.Debug("BrokerHostingPowerAction UID: " + $BrokerHostingPowerAction.UID)
+					}
+					$i = 0
+					$TimeOut = 600
+					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
+					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) 
+					{
+						$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
+						$Logger.Info("BrokerHostingPowerAction state of machine " + $MyMachine.MachineName + " is $BrokerHostingPowerActionState, waiting for completion... ($i / $TimeOut)")
+						Start-Sleep -Milliseconds 5000
+						$i++
+					}
+					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
+					
+					if ($BrokerHostingPowerActionState -eq "Completed") 
+					{
+						$return = 0
+					}
+					else 
+					{
+						$Logger.Error("TimeOut reached, while turning off VDI!")
+						Throw "TimeOut reached, while turning off VDI!"
+					}
+				}
+				else 
+				{
+					$Logger.Info("Machine is Off, nothing to do, continue...")
+				}
+				# to do error check
+				$Logger.Info("Remove BrokerMachine from DesktopGroup " + $MyMachine.DesktopGroupName + "(" + $MyMachine.DesktopGroupUid + ")")
+				$rc = Remove-BrokerMachine -AdminAddress $DDCAddress -LoggingId $HighLevelOp.Id -DesktopGroup $MyMachine.DesktopGroupUid -Force -InputObject $MyMachine
+				# to do error check
+					
+				$Logger.Info("Remove BrokerMachine from Catalog " + $MyMachine.CatalogName + "(" + $MyMachine.CatalogUid + ")")
+				Remove-BrokerMachine -AdminAddress $DDCAddress -LoggingId $HighLevelOp.Id -Force -InputObject $MyMachine
+					
+				$succeeded = $true
+				Stop-LogHighLevelOperation -AdminAddress $DDCAddress -HighLevelOperationId $HighLevelOp.Id -IsSuccessful $succeeded
+				$Logger.Info("Seccessfuly removed machine $MachineName")
+					
+			}
+			catch [System.Exception] 
+			{
+				$succeeded = $false
+				$Logger.Error("Problem while removing machine " + $MachineName + ": " + $_ )
+				throw $_
+			}
+			finally 
+			{
+				# Log high level operation stop, and indicate its success
+				# http://support.citrix.com/proddocs/topic/citrix-configurationlogging-admin-v1-xd75/start-loghighleveloperation-xd75.html
+				<# Stop-LogHighLevelOperation  -AdminAddress $DDCAddress -HighLevelOperationId $HighLevelOp.Id -IsSuccessful $succeeded #>
+			}
+		}
+		else 
+		{
+			$Logger.Error("Machine $MachineName does not exists! Cannot remove this machine!")
+			throw "ERROR: Machine $MachineName does not exists! Cannot remove this machine!"
+		}
+	}	
+	else 
+	{
 		$Logger.Error("MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'")
 		throw "MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'"
 	}
@@ -808,22 +1060,28 @@ function New-EitProvVM {
 			[Parameter(Mandatory=$true)] [Object[]] $Logger,
 			[Parameter(Mandatory=$false)] [boolean] $EnableDebug
 	) 
-	if ($EnableDebug) {		
+	if ($EnableDebug) 
+	{		
 		$Logger.Debug("DebugMode is enabled")
 	}
-	If ([Regex]::Matches($MachineName, "\\").Count -ne 0) {
-		if ($EnableDebug) {		
+	if ([Regex]::Matches($MachineName, "\\").Count -ne 0) 
+	{
+		if ($EnableDebug) 
+		{		
 			$Logger.Debug("Command: New-EitProvVM -MachineName " + $MachineName + " -CatalogName " + $CatalogName + " -DesktopGroupName " + $DesktopGroupName + " -DDCAddress " + $DDCAddress + " -AssociatedUserNames " + ($AssociatedUserNames -Join (", ")) + " -Logger " +  $Logger + " -EnableDebug " + $EnableDebug)
 		}
 		$TestVM = $Null
 		Add-PSSnapin citrix.*
 		$TestVM = Get-BrokerMachine -CatalogName $CatalogName -AdminAddress $DDCAddress -MachineName $MachineName -ErrorAction SilentlyContinue
-		If ($TestVM -eq $Null) {
-			try {
+		if ($TestVM -eq $Null) 
+		{
+			try 
+			{
 
 				$succeeded = $false
 				$svcStatus = Get-ConfigServiceStatus  -AdminAddress $ddcAddress
-				if ($svcStatus -ne "OK") {
+				if ($svcStatus -ne "OK") 
+				{
 					$Logger.Error("Problem with $DDCAddress, ConfigServiceStatus is $svcStatus")
 					throw "Problem with $DDCAddress, ConfigServiceStatus is $svcStatus"
 				}
@@ -832,29 +1090,34 @@ function New-EitProvVM {
 				# http://support.citrix.com/proddocs/topic/citrix-configurationlogging-admin-v1-xd75/get-logsite-xd75.html
 				# TODO: exit if logging is not available
 				$logState = Get-LogSite  -AdminAddress $ddcAddress 
-				if ($logState.State -ne "Enabled") {
+				if ($logState.State -ne "Enabled") 
+				{
 					$Logger.Error("Problem with $DDCAddress, Logging state is $($logState.State)")
 					throw "Problem with $DDCAddress, Logging state is $($logState.State)"
 				}
 			
 				$Logger.Info("Initializing FullClone for machine $MachineName")
 				$HighLevelOp = Start-LogHighLevelOperation -AdminAddress $DDCAddress -Source "New-EitProvVM" -Text "Adding Machine $MachineName to Catalog $CatalogName"
-				if ($EnableDebug) {		
+				if ($EnableDebug) 
+				{		
 					$Logger.Debug("$MyCatalog =  Get-BrokerCatalog -Name $catalogName")
 				}
 				$MyCatalog =  Get-BrokerCatalog -Name $CatalogName -AdminAddress $DDCAddress
-				if ($EnableDebug) {
+				if ($EnableDebug) 
+				{
 					$Logger.Debug("Obtained broker catalog UID $($MyCatalog.Uid)")
 				}
 				Set-BrokerCatalogMetadata -AdminAddress $DDCAddress -CatalogName $CatalogName -LoggingId $HighLevelOp.Id -Name 'New-EitProvVM_Status' -Value "Adding Machine Accounts"
 
 				# http://support.citrix.com/proddocs/topic/citrix-adidentity-admin-v2-xd75/get-acctadaccount-xd75.html
 				# check to see if there are already account for the account pool able satisfy this request
-				if ($EnableDebug) {
+				if ($EnableDebug) 
+				{
 					$Logger.Debug("Get-AcctIdentityPool -AdminAddress $DDCAddress -IdentityPoolName $CatalogName -MaxRecordCount 2147483647")
 				}
 				$AcctIdPool = Get-AcctIdentityPool -AdminAddress $DDCAddress -IdentityPoolName $CatalogName -MaxRecordCount 2147483647
-				if ($EnableDebug) {
+				if ($EnableDebug) 
+				{
 					$Logger.Debug("Obtained identity pool for $CatalogName, which has UID $($AcctIdPool.IdentityPoolUid) Full variable is $($AcctIdPool)")
 				}
 				# http://support.citrix.com/proddocs/topic/citrix-adidentity-admin-v2-xd75/get-acctadaccount-xd75.html
@@ -869,47 +1132,54 @@ function New-EitProvVM {
 				$Logger.Info("Check if AD Account for machine $MachineName exists in Domain...")
 				$tmp = $MachineName.Split("\")
 				$EitADComputer = Get-EitADComputer -ComputerName $tmp[1]
-				if ($EnableDebug) {
+				if ($EnableDebug) 
+				{
 					$Logger.Debug($EitADComputer)
 				}
-				If ($EitADComputer.Success -ne "True") {
+				if ($EitADComputer.Success -ne "True") 
+				{
 					throw "AD Account for machine $MachineName does not exists, please create it first..."
 				}     
 				$Logger.Info("Check if AD Account for machine $MachineName in Catalog $CatalogName already exists...")
 				$MyADAccount = Get-AcctADAccount -IdentityPoolUid $acctIdPool.IdentityPoolUid -AdminAddress $DDCAddress | where {$_.ADAccountName -eq ($MachineName + "$")}
 				
-				if ($EnableDebug) {
+				if ($EnableDebug) 
+				{
 					$Logger.Debug($MyADAccount)
 				}
 				
-				If ($MyADAccount -eq $Null) {
+				if ($MyADAccount -eq $Null) 
+				{
 					$Logger.Info("AD Account for machine $MachineName does not exists in catalog $CatalogName, try to adding it...")
 					$rc = Add-AcctADAccount -ADAccountName ($MachineName + "$") -AdminAddress $DDCAddress -IdentityPoolName $CatalogName
-					if ($rc.FailedAccountsCount -gt 1) {
+					if ($rc.FailedAccountsCount -gt 1) 
+					{
 						$Logger.Info("Account creation in catalog $CatalogName failed. Check permissions")
 						throw "Account creation in catalog $CatalogName failed. Check permissions"
 					}  
-					
 				}	
 						
-				If ($MyADAccount.State -eq "Tainted") {
+				if ($MyADAccount.State -eq "Tainted") 
+				{
 					$Logger.Info("State of AD Account for machine $MachineName is Tainted, repairing it...")
 					$rc = Repair-AcctADAccount -ADAccountName ($MachineName + "$") -AdminAddress $DDCAddress
 				}	
 				
-				if ($EnableDebug) {
+				if ($EnableDebug) 
+				{
 					$Logger.Debug("SuccessfulAccountsCount: " + $rc.SuccessfulAccountsCount)
 					$Logger.Debug("FailedAccountsCount: " + $rc.FailedAccountsCount)
 				}
 				
-				
 				$Logger.Info("Recheck if AD Account for machine $MachineName in Catalog $CatalogName already exists...")
 				$MyADAccount = Get-AcctADAccount -IdentityPoolUid $acctIdPool.IdentityPoolUid -AdminAddress $DDCAddress | where {$_.ADAccountName -eq ($MachineName + "$")}	
 				
-				if ($EnableDebug) {
+				if ($EnableDebug) 
+				{
 					$Logger.Debug($($MyADAccount))
 				}
-				if ([string]::IsNullOrEmpty($MyADAccount)) {
+				if ([string]::IsNullOrEmpty($MyADAccount)) 
+				{
 					$Logger.Error("Error with AcctADAccount, result is null!")
 					throw "Error with AcctADAccount, result is null!"
 				} 
@@ -917,7 +1187,8 @@ function New-EitProvVM {
 				Set-BrokerCatalogMetadata -AdminAddress $DDCAddress -CatalogName $CatalogName -LoggingId $HighLevelOp.Id -Name 'New-EitProvVM_Status' -Value "Creating new desktop"
 
 				# http://support.citrix.com/proddocs/topic/citrix-machinecreation-admin-v2-xd75/new-provvm-xd75.html
-				if ($EnableDebug) {
+				if ($EnableDebug) 
+				{
 					$Logger.Debug("Calling New-ProvVM  -ADAccountName $($MyADAccount.SuccessfulAccounts) -AdminAddress $DDCAddress -LoggingId $($HighLevelOp.Id)  -MaxAssistants 5 -ProvisioningSchemeName $CatalogName")
 				}
 				$Logger.Info("Start cloning machine $MachineName")
@@ -927,30 +1198,36 @@ function New-EitProvVM {
 				$ProvTask = Get-ProvTask -TaskId $rc.Guid -AdminAddress $DDCAddress
 				$i = 0
 				$TimeOut = 600
-				while (($ProvTask.Status -ne "Finished") -and ($i -lt $TimeOut)) {
+				while (($ProvTask.Status -ne "Finished") -and ($i -lt $TimeOut)) 
+				{
 					$ProvTask = Get-ProvTask -TaskId $rc.Guid -AdminAddress $DDCAddress
 					$Logger.Info("Status of Task New-ProvVM for machine " + $MachineName + " is " + $ProvTask.Status + ", waiting for completion... ($i / $TimeOut) ")
 					Start-Sleep -Milliseconds 10000
 					$i++
 				}
-				if ($EnableDebug) {
+				if ($EnableDebug) 
+				{
 					$Logger.Debug($(Get-ProvTask -TaskId $rc.Guid -AdminAddress $DDCAddress))
 				}
 				
-				if ($ProvTask.VirtualMachinesCreationFailedCount -ne 0) {
+				if ($ProvTask.VirtualMachinesCreationFailedCount -ne 0) 
+				{
 					$Logger.Error("Problem occurred while creating new vm " + $MachineName + ": " + $ProvTask.TerminatingError)
 					throw ("Problem occurred while creating new vm " + $MachineName + ": " + $ProvTask.TerminatingError)
 				}
 				
 				
-				if ($ProvTask.WorkflowStatus -ne "Completed") {
+				if ($ProvTask.WorkflowStatus -ne "Completed") 
+				{
 					$Logger.Error("Problem occurred while creating new vm " + $MachineName + ": " + $ProvTask.TerminatingError)
 					throw ("Problem occurred while creating new vm " + $MachineName + ": " + $ProvTask.TerminatingError)
 				}
-				if ($EnableDebug) {
+				if ($EnableDebug) 
+				{
 					$Logger.Debug("New-ProvVM reported $($ProvTask)")
 				}
-				foreach ($newVM in $ProvTask.CreatedVirtualMachines) {	
+				foreach ($newVM in $ProvTask.CreatedVirtualMachines) 
+				{	
 					# Lock-ProvVM http://support.citrix.com/proddocs/topic/citrix-machinecreation-admin-v2-xd75/lock-provvm-xd75.html
 					if ($EnableDebug) {
 						$Logger.Debug("Lock-ProvVM  -AdminAddress $DDCAddress -LoggingId $($HighLevelOp.Id) -ProvisioningSchemeName $CatalogName -Tag 'Brokered' -VMID @($newVM.VMId)")
@@ -959,22 +1236,26 @@ function New-EitProvVM {
 					Lock-ProvVM  -AdminAddress $DDCAddress -LoggingId $HighLevelOp.Id -ProvisioningSchemeName $CatalogName -Tag 'Brokered' -VMID @($newVM.VMId)
 
 					# New-BrokerMachine http://support.citrix.com/proddocs/topic/citrix-broker-admin-v2-xd75/new-brokermachine-xd75.html
-					if ($EnableDebug) {
+					if ($EnableDebug) 
+					{
 						$Logger.Debug("New-BrokerMachine  -AdminAddress $DDCAddress -CatalogUid $newCatalog.Uid -LoggingId $($highLevelOp.Id) -MachineName $newVM.ADAccountSid")
 					}
 					$NewBrokeredMachine = New-BrokerMachine  -AdminAddress $DDCAddress -CatalogUid $MyCatalog.Uid -LoggingId $HighLevelOp.Id -MachineName $newVM.ADAccountSid
-					if ($EnableDebug) {
+					if ($EnableDebug) 
+					{
 						$Logger.Debug("Result from New-BrokerMachine was $newBrokeredMachine")
 					}	
 				}
 				$succeeded = $true
 			}
-			catch [System.Exception] {
+			catch [System.Exception] 
+			{
 				Set-BrokerCatalogMetadata -AdminAddress $DDCAddress -CatalogName $CatalogName -LoggingId $HighLevelOp.Id -Name 'MyScriptS_Status' -Value "Add new Desktops failed"
 				$Logger.Error("Problem with catalog creation / update: " + $_ )
 				throw $_
 			}
-			finally {
+			finally 
+			{
 				# Log high level operation stop, and indicate its success
 				# http://support.citrix.com/proddocs/topic/citrix-configurationlogging-admin-v1-xd75/start-loghighleveloperation-xd75.html
 				Stop-LogHighLevelOperation -AdminAddress $DDCAddress -HighLevelOperationId $HighLevelOp.Id -IsSuccessful $succeeded
@@ -988,8 +1269,10 @@ function New-EitProvVM {
 			$succeeded = $false #indicates if high level operation succeeded.
 			$HighLevelOp = Start-LogHighLevelOperation -AdminAddress $DDCAddress -Source "New-EitProvVM" -Text "Adding machines to DeliveryGroup $DesktopGroupName"
 
-			try {
-				if ($EnableDebug) {
+			try 
+			{
+				if ($EnableDebug) 
+				{
 					$Logger.Debug("Add-BrokerMachinesToDesktopGroup  -AdminAddress $DDCAddress -Catalog $CatalogName -Count 1 -DesktopGroup $DesktopGroupName -LoggingId $HighLevelOp.Id")
 				}
 				$Logger.Info("Add machine to DesktopGroup $DesktopGroupName")
@@ -1002,12 +1285,14 @@ function New-EitProvVM {
 				$succeeded = $true
 				$Logger.Info("Succeeded in creating catalog $catalogName with 1 machine" )
 			}
-			catch [System.Exception] {
+			catch [System.Exception] 
+			{
 				Set-BrokerCatalogMetadata -AdminAddress $DDCAddress -CatalogName $CatalogName -LoggingId $HighLevelOp.Id -Name 'New-EitProvVM_Status' -Value "Add machine to desktop group failed"
 				$Logger.Error("Problem with desktop delivery group creation " + $_ )
 				throw $_
 			}
-			finally	{
+			finally	
+			{
 				# Log high level operation stop, and indicate its success
 				# http://support.citrix.com/proddocs/topic/citrix-configurationlogging-admin-v1-xd75/start-loghighleveloperation-xd75.html
 				Stop-LogHighLevelOperation -AdminAddress $DDCAddress -HighLevelOperationId $HighLevelOp.Id -IsSuccessful $succeeded
@@ -1017,9 +1302,12 @@ function New-EitProvVM {
 			$succeeded = $false #indicates if high level operation succeeded.
 			$HighLevelOp =  Start-LogHighLevelOperation -AdminAddress $DDCAddress -Source "New-EitProvVM" -Text "Adding users to machine $MachineName"
 
-			try {
-				foreach ($AssociatedUserName in $AssociatedUserNames) {
-					if ($EnableDebug) {
+			try 
+			{
+				foreach ($AssociatedUserName in $AssociatedUserNames) 
+				{
+					if ($EnableDebug) 
+					{
 						$Logger.Debug("Add-BrokerUser -AdminAddress $DDCAddress -LoggingId $HighLevelOp.Id -Name $AssociatedUserName -PrivateDesktop $MachineName")
 					}
 					$Logger.Info("Add user $AssociatedUserName to machine $MachineName")
@@ -1029,45 +1317,54 @@ function New-EitProvVM {
 				$Logger.Info("Succeeded in adding users..." )
 							
 			}
-			catch [System.Exception] {
+			catch [System.Exception] 
+			{
 				Set-BrokerCatalogMetadata -AdminAddress $DDCAddress -CatalogName $CatalogName -LoggingId $HighLevelOp.Id -Name 'New-EitProvVM_Status' -Value "Adding users to machine $MachineName failed"
 				$Logger.Error("Problem with adding users " + $_ )
 				throw $_
 			}
-			finally	{
+			finally	
+			{
 				# Log high level operation stop, and indicate its success
 				# http://support.citrix.com/proddocs/topic/citrix-configurationlogging-admin-v1-xd75/start-loghighleveloperation-xd75.html
 				Stop-LogHighLevelOperation -AdminAddress $DDCAddress -HighLevelOperationId $HighLevelOp.Id -IsSuccessful $succeeded
 			}
 			
-			try {
+			try 
+			{
 				$Logger.Info("Get machine info for machine $DomainName\$MachineName")
 				$MyMachine = Get-BrokerMachine -MachineName $MachineName -AdminAddress $DDCAddress
 				$Logger.Info("Testing MaintMode")
-				If ($MyMachine.InMaintenanceMode) {
+				if ($MyMachine.InMaintenanceMode) 
+				{
 					$Logger.Info("Machine is in MaintMode, disable MaintMode...")
 					Set-BrokerMachine $MyMachine -InMaintenanceMode $false -AdminAddress $DDCAddress
 				}
-				else {
+				else 
+				{
 					$Logger.Info("Machine is NOT in MaintMode, nothing to do, continue...")
 				}
 			
 				$Logger.Info("Checking PowerState...")
-				if ($EnableDebug) {
+				if ($EnableDebug) 
+				{
 					$Logger.Debug($($MyMachine))
 					$Logger.Debug("Powerstate: " + $MyMachine.Powerstate)
 				}
 				
-				if ($MyMachine.Powerstate -ne "On") {
+				if ($MyMachine.Powerstate -ne "On") 
+				{
 					$Logger.Info("Machine is OFF, starting Machine")
 					$BrokerHostingPowerAction = New-BrokerHostingPowerAction -Action TurnOn -MachineName $MyMachine.MachineName -AdminAddress $DDCAddress
-					if ($EnableDebug) {
+					if ($EnableDebug) 
+					{
 						$Logger.Debug("BrokerHostingPowerAction UID: " + $BrokerHostingPowerAction.UID)
 					}
 					$i = 0
 					$TimeOut = 600
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
-					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) {
+					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) 
+					{
 						$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 						$Logger.Info("BrokerHostingPowerAction state of machine " + $MyMachine.MachineName + " is $BrokerHostingPowerActionState, waiting for completion... ($i / $TimeOut)")
 						Start-Sleep -Milliseconds 5000
@@ -1075,58 +1372,70 @@ function New-EitProvVM {
 					}
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 					
-					if ($BrokerHostingPowerActionState -eq "Completed") {
+					if ($BrokerHostingPowerActionState -eq "Completed") 
+					{
 						$return = 0
 					}
-					else {
+					else 
+					{
 						$Logger.Error("TimeOut reached, while turning on VDI!")
 						Throw "TimeOut reached, while turning on VDI!"
 					}
 				}
-				else {
+				else 
+				{
 					$Logger.Info("Machine is On, nothing to do, continue...")
 				}
 				
 				$Logger.Info("Checking Registration state...")
 				$RegistrationState = $(Get-BrokerMachine -MachineName $MachineName -AdminAddress $DDCAddress).RegistrationState
-				if ($RegistrationState -ne "Registered") {
+				if ($RegistrationState -ne "Registered") 
+				{
 					$i = 0
 					$TimeOut = 600
 					$RegistrationState = $(Get-BrokerMachine -MachineName $MachineName -AdminAddress $DDCAddress).RegistrationState
-					while (($RegistrationState -ne "Registered") -and ($i -lt $TimeOut)) {
+					while (($RegistrationState -ne "Registered") -and ($i -lt $TimeOut)) 
+					{
 						$RegistrationState = $(Get-BrokerMachine -MachineName $MachineName -AdminAddress $DDCAddress).RegistrationState
 						$Logger.Info("RegistrationState of Machine " +  $MyMachine.MachineName + " is " + $RegistrationState + ", waiting for registration... ($i / $TimeOut)")
 						Start-Sleep -Milliseconds 5000
 						$i++
-						if ($EnableDebug) {
+						if ($EnableDebug) 
+						{
 							$Logger.Debug($i)
 						}
 					}
 					$RegistrationState = $(Get-BrokerMachine -MachineName $MachineName -AdminAddress $DDCAddress).RegistrationState
-					if ($RegistrationState -ne "Registered") {
+					if ($RegistrationState -ne "Registered") 
+					{
 						$Logger.Error("TimeOut reached, while waiting for registration!")
 						Throw "TimeOut reached, while waiting for registration!"
 					}
 				}
-				else {
+				else 
+				{
 					$Logger.Info("Machine is Registered, nothing to do, continue...")
 				}
 				
 			}
-			catch [System.Exception] {
+			catch [System.Exception] 
+			{
 				$Logger.Error("Problem occurred while turning machine on " + $_ )
 				throw $_
 			}
-			if ($EnableDebug) {
+			if ($EnableDebug) 
+			{
 				$Logger.Debug("Machine created successfully!")
 			}
 		}
-		else {
+		else 
+		{
 			$Logger.Error("Machine $MachineName already exists! Cannot clone this machine!")
 			throw "ERROR: machine $MachineName already exists! Cannot clone this machine!"
 		}
 	}
-	else {
+	else 
+	{
 		$Logger.Error("MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'")
 		throw "MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'"
 	}
@@ -1176,10 +1485,12 @@ function Remove-EitBrokerTag {
 			[Parameter(Mandatory=$true)] [Object[]] $Logger,
 			[Parameter(Mandatory=$false)] [boolean] $EnableDebug
 	) 
-	if ($EnableDebug) {		
+	if ($EnableDebug) 
+	{		
 			$Logger.Debug("Command: Remove-EitBrokerTag -MachineName " + $MachineName + " -TagName " + $TagName + " -DDCAddress " + $DDCAddress + " -Logger " +  $Logger + " -EnableDebug " + $EnableDebug)
 	}
-	If ([Regex]::Matches($MachineName, "\\").Count -ne 0) {
+	if ([Regex]::Matches($MachineName, "\\").Count -ne 0) 
+	{
 		$succeeded = $false
 		$tmp = $MachineName.Split("\")
 		$DomainName = $tmp[0]
@@ -1188,9 +1499,12 @@ function Remove-EitBrokerTag {
 		$TestVM = $Null
 		$Logger.Info("Testing machine $MachineName")
 		$TestVM = Get-BrokerMachine -MachineName ($DomainName + "\" + $MachineName) -AdminAddress $DDCAddress -ErrorAction SilentlyContinue
-		If ($TestVM -ne $Null) {
-			try {
-				if ((Get-PSSnapin -Name "Citrix.Broker.Admin.V2" -ErrorAction SilentlyContinue) -eq $null) {
+		if ($TestVM -ne $Null) 
+		{
+			try 
+			{
+				if ((Get-PSSnapin -Name "Citrix.Broker.Admin.V2" -ErrorAction SilentlyContinue) -eq $null) 
+				{
 					Add-PSSnapin citrix* -ErrorAction SilentlyContinue
 				}
 								
@@ -1198,35 +1512,42 @@ function Remove-EitBrokerTag {
 				<# $MachineTags = $(Get-BrokerMachine -MachineName  $MachineName -AdminAddress $DDCAddress -ErrorAction SilentlyContinue).Tags #>
 				$MachineTags = $TestVM.Tags
 				$Logger.Info("Testing if tag $TagName exists on machine $DomainName\$MachineName")
-				if ($EnableDebug) {		
+				if ($EnableDebug) 
+				{		
 					$Logger.Debug("MachineTags =  " + $MachineTags)
 				}
-				if ($MachineTags.contains($TagName)) {
+				if ($MachineTags.contains($TagName)) 
+				{
 					$Logger.Info("Tag exists, removing it from machine $DomainName\$MachineName")
-					if ($EnableDebug) {		
+					if ($EnableDebug) 
+					{		
 						$Logger.Debug("Command: Remove-BrokerTag -Machine " + $MachineName + " -Name " + $TagName + " -AdminAddress " + $DDCAddress)
 					}
 					Remove-BrokerTag -Machine ($DomainName + "\" + $MachineName) -Name $TagName -AdminAddress $DDCAddress
 				}
-				else {
+				else 
+				{
 					$msg = "Tag $TagName does not exists on machine $MachineName! Cannot remove tag from this machine!"
 					$Logger.Error($msg)
 					throw ("ERROR: " + $msg)
 				}
 				
 			}
-			catch [System.Exception] {
+			catch [System.Exception] 
+			{
 				$succeeded = $false
 				$Logger.Error("Problem while removing tag on machine " + $MachineName + ": " + $_ )
 				throw $_
 			}
 		}
-		else {
+		else 
+		{
 			$Logger.Error("Machine $MachineName does not exists! Cannot remove tag from this machine!")
 			throw "ERROR: Machine $MachineName does not exists! Cannot remove tag from this machine!"
 		}
 	}	
-	else {
+	else 
+	{
 		$Logger.Error("MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'")
 		throw "MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'"
 	}
@@ -1276,10 +1597,12 @@ function Add-EitBrokerTag {
 			[Parameter(Mandatory=$true)] [Object[]] $Logger,
 			[Parameter(Mandatory=$false)] [boolean] $EnableDebug
 	) 
-	if ($EnableDebug) {		
+	if ($EnableDebug) 
+	{		
 			$Logger.Debug("Command: Add-EitBrokerTag -MachineName " + $MachineName + " -TagName " + $TagName + " -DDCAddress " + $DDCAddress + " -Logger " +  $Logger + " -EnableDebug " + $EnableDebug)
 	}
-	If ([Regex]::Matches($MachineName, "\\").Count -ne 0) {
+	if ([Regex]::Matches($MachineName, "\\").Count -ne 0) 
+	{
 		$succeeded = $false
 		$tmp = $MachineName.Split("\")
 		$DomainName = $tmp[0]
@@ -1288,52 +1611,64 @@ function Add-EitBrokerTag {
 		$TestVM = $Null
 		$Logger.Info("Testing machine $MachineName")
 		$TestVM = Get-BrokerMachine -MachineName ($DomainName + "\" + $MachineName) -AdminAddress $DDCAddress -ErrorAction SilentlyContinue
-		If ($TestVM -ne $Null) {
-			try {
-				if ((Get-PSSnapin -Name "Citrix.Broker.Admin.V2" -ErrorAction SilentlyContinue) -eq $null) {
+		if ($TestVM -ne $Null) 
+		{
+			try 
+			{
+				if ((Get-PSSnapin -Name "Citrix.Broker.Admin.V2" -ErrorAction SilentlyContinue) -eq $null) 
+				{
 					Add-PSSnapin citrix* -ErrorAction SilentlyContinue
 				}
 				$Logger.Info("Test if tag $TagName exists...")
 				$TestBrokerTag = $null
 				$TestBrokerTag = Get-BrokerTag -Name $TagName -AdminAddress $DDCAddress -ErrorAction SilentlyContinue
 				
-				if ($TestBrokerTag -ne $null) {
+				if ($TestBrokerTag -ne $null) 
+				{
 					$MachineTags = $TestVM.Tags
 					$Logger.Info("Testing if tag $TagName already exists on machine $DomainName\$MachineName")
-					if ($EnableDebug) {		
+					if ($EnableDebug) 
+					{		
 						$Logger.Debug("MachineTags =  " + $MachineTags)
 					}
-					if (!($MachineTags.contains($TagName))) {
+					if (!($MachineTags.contains($TagName))) 
+					{
 						$Logger.Info("Tag does not exists, adding it to machine $DomainName\$MachineName")
-						if ($EnableDebug) {		
+						if ($EnableDebug) 
+						{		
 							$Logger.Debug("Command: Add-BrokerTag -Machine " + $MachineName + " -Name " + $TagName + " -AdminAddress " + $DDCAddress)
 						}
 						Add-BrokerTag -Machine ($DomainName + "\" + $MachineName) -Name $TagName -AdminAddress $DDCAddress
 					}
-					else {
+					else 
+					{
 						$msg = "Tag $TagName does already exists on machine $MachineName! Cannot add tag to this machine!"
 						$Logger.Error($msg)
 						throw ("ERROR: " + $msg)
 					}
 				}
-				else {
+				else 
+				{
 					$msg = "Tag $TagName does not exists in this environment, please create it first! Cannot add tag to this machine!"
 					$Logger.Error($msg)
 					throw ("ERROR: " + $msg)
 				}
 			}
-			catch [System.Exception] {
+			catch [System.Exception] 
+			{
 				$succeeded = $false
 				$Logger.Error("Problem while adding tag on machine " + $MachineName + ": " + $_ )
 				throw $_
 			}
 		}
-		else {
+		else 
+		{
 			$Logger.Error("Machine $MachineName does not exists! Cannot add tag to this machine!")
 			throw "ERROR: Machine $MachineName does not exists! Cannot add tag to this machine!"
 		}
 	}	
-	else {
+	else 
+	{
 		$Logger.Error("MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'")
 		throw "MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'"
 	}
@@ -1382,37 +1717,46 @@ function Stop-EitCitrixBrokerMachine {
 		[Parameter(Mandatory=$true)] [Object[]] $Logger,
 		[Parameter(Mandatory=$false)] [boolean] $EnableDebug
 	) 
-	if ($EnableDebug) {		
+	if ($EnableDebug) 
+	{		
 		$Logger.Debug("Command: Stop-EitBrokerMachine -MachineName " + $MachineName + " -DDCAddress " + $DDCAddress + " -Logger " +  $Logger + " -EnableDebug " + $EnableDebug)
 	}
 	$SnapinTest = $null
 	$SnapinName = "Citrix.Broker.Admin.V2"
-	if ((Get-PSSnapin | ? { $_.Name -eq $SnapinName }) -eq $null) {
+	if ((Get-PSSnapin | ? { $_.Name -eq $SnapinName }) -eq $null) 
+	{
     	Add-PSSnapin $SnapinName -ErrorAction SilentlyContinue
 	}
 	$SnapinTest = Get-PSSnapin Citrix.Broker.Admin.V2 -ErrorAction SilentlyContinue
-	if ($SnapinTest -ne $null) {
-		If ([Regex]::Matches($MachineName, "\\").Count -ne 0) {
+	if ($SnapinTest -ne $null) 
+	{
+		if ([Regex]::Matches($MachineName, "\\").Count -ne 0) 
+		{
 			$succeeded = $false
 			$tmp = $MachineName.Split("\")
 			$DomainName = $tmp[0]
 			$MachineName = $tmp[1]
 			$TimeOut = 600 
-			try {
-				if ($EnableDebug) {
+			try 
+			{
+				if ($EnableDebug) 
+				{
 					$Logger.Debug("Get Broker Machine $DomainName\$MachineName -AdminAddress $DDCAddress")
 				}	
 				$Logger.Info("Get machine info for machine $DomainName\$MachineName")
 				$MyMachine = Get-BrokerMachine -MachineName ($DomainName + "\" + $MachineName) -AdminAddress $DDCAddress
-				if ($MyMachine.Powerstate -eq "On") {
+				if ($MyMachine.Powerstate -eq "On") 
+				{
 					$Logger.Info("Trying to turn off machine $MachineName ...")
 					$BrokerHostingPowerAction = New-BrokerHostingPowerAction -Action TurnOff -MachineName $MyMachine.MachineName -AdminAddress $DDCAddress
-					if ($EnableDebug) {
+					if ($EnableDebug) 
+					{
 						$Logger.Debug("BrokerHostingPowerAction UID: " + $BrokerHostingPowerAction.UID)
 					}
 					$i = 0
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
-					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) {
+					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) 
+					{
 						$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 						$Logger.Info("BrokerHostingPowerAction state of machine " + $MyMachine.MachineName + " is $BrokerHostingPowerActionState, waiting for completion... ($i / $TimeOut)")
 						Start-Sleep -Milliseconds 5000
@@ -1420,30 +1764,36 @@ function Stop-EitCitrixBrokerMachine {
 					}
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 
-					if ($BrokerHostingPowerActionState -eq "Completed") {
+					if ($BrokerHostingPowerActionState -eq "Completed") 
+					{
 						$MyLogger.Info("Machine $MachineName successfuly turned off!")
 					}
-					else {
+					else 
+					{
 						$Logger.Error("TimeOut reached, while turning off machine $MachineName!")
 						Throw "TimeOut reached, while turning off machine $MachineName!"
 					}
 				}
-				else {
+				else 
+				{
 					Throw ("Unable to turn off machine $MachineName, Powerstate is " + $MyMachine.Powerstate)
 				}	
 			}
-			catch [System.Exception] {
+			catch [System.Exception] 
+			{
 				$succeeded = $false
 				$Logger.Error("Problem while performing power action for machine " + $MachineName + ": " + $_ )
 				throw $_
 			}	
 		}	
-		else {
+		else 
+		{
 			$Logger.Error("MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'")
 			throw "MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'"
 		}	
 	}
-	else {
+	else 
+	{
 		$Logger.Error("Required PSSnapin Citrix.Broker.Admin.V2 is not installed!")
 		throw "Required PSSnapin Citrix.Broker.Admin.V2 is not installed!"
 	}				
@@ -1492,37 +1842,46 @@ function Start-EitCitrixBrokerMachine {
 		[Parameter(Mandatory=$true)] [Object[]] $Logger,
 		[Parameter(Mandatory=$false)] [boolean] $EnableDebug
 	) 
-	if ($EnableDebug) {		
+	if ($EnableDebug) 
+	{		
 		$Logger.Debug("Command: Start-EitBrokerMachine -MachineName " + $MachineName + " -DDCAddress " + $DDCAddress + " -Logger " +  $Logger + " -EnableDebug " + $EnableDebug)
 	}
 	$SnapinTest = $null
 	$SnapinName = "Citrix.Broker.Admin.V2"
-	if ((Get-PSSnapin | ? { $_.Name -eq $SnapinName }) -eq $null) {
+	if ((Get-PSSnapin | ? { $_.Name -eq $SnapinName }) -eq $null) 
+	{
     	Add-PSSnapin $SnapinName -ErrorAction SilentlyContinue
 	}
 	$SnapinTest = Get-PSSnapin Citrix.Broker.Admin.V2 -ErrorAction SilentlyContinue
-	if ($SnapinTest -ne $null) {
-		If ([Regex]::Matches($MachineName, "\\").Count -ne 0) {
+	if ($SnapinTest -ne $null) 
+	{
+		if ([Regex]::Matches($MachineName, "\\").Count -ne 0) 
+		{
 			$succeeded = $false
 			$tmp = $MachineName.Split("\")
 			$DomainName = $tmp[0]
 			$MachineName = $tmp[1]
 			$TimeOut = 600 
-			try {
-				if ($EnableDebug) {
+			try 
+			{
+				if ($EnableDebug) 
+				{
 					$Logger.Debug("Get Broker Machine $DomainName\$MachineName -AdminAddress $DDCAddress")
 				}	
 				$Logger.Info("Get machine info for machine $DomainName\$MachineName")
 				$MyMachine = Get-BrokerMachine -MachineName ($DomainName + "\" + $MachineName) -AdminAddress $DDCAddress
-				if ($MyMachine.Powerstate -eq "Off") {
+				if ($MyMachine.Powerstate -eq "Off") 
+				{
 					$Logger.Info("Trying to turn on machine $MachineName ...")
 					$BrokerHostingPowerAction = New-BrokerHostingPowerAction -Action TurnOn -MachineName $MyMachine.MachineName -AdminAddress $DDCAddress
-					if ($EnableDebug) {
+					if ($EnableDebug) 
+					{
 						$Logger.Debug("BrokerHostingPowerAction UID: " + $BrokerHostingPowerAction.UID)
 					}
 					$i = 0
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
-					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) {
+					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) 
+					{
 						$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 						$Logger.Info("BrokerHostingPowerAction state of machine " + $MyMachine.MachineName + " is $BrokerHostingPowerActionState, waiting for completion... ($i / $TimeOut)")
 						Start-Sleep -Milliseconds 5000
@@ -1530,30 +1889,36 @@ function Start-EitCitrixBrokerMachine {
 					}
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 
-					if ($BrokerHostingPowerActionState -eq "Completed") {
+					if ($BrokerHostingPowerActionState -eq "Completed") 
+					{
 						$MyLogger.Info("Machine $MachineName successfuly turned on!")
 					}
-					else {
+					else 
+					{
 						$Logger.Error("TimeOut reached, while turning on machine $MachineName!")
 						Throw "TimeOut reached, while turning on machine $MachineName!"
 					}
 				}
-				else {
+				else 
+				{
 					Throw ("Unable to turn on machine $MachineName, Powerstate is " + $MyMachine.Powerstate)
 				}	
 			}
-			catch [System.Exception] {
+			catch [System.Exception] 
+			{
 				$succeeded = $false
 				$Logger.Error("Problem while performing power action for machine " + $MachineName + ": " + $_ )
 				throw $_
 			}	
 		}	
-		else {
+		else 
+		{
 			$Logger.Error("MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'")
 			throw "MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'"
 		}	
 	}
-	else {
+	else 
+	{
 		$Logger.Error("Required PSSnapin Citrix.Broker.Admin.V2 is not installed!")
 		throw "Required PSSnapin Citrix.Broker.Admin.V2 is not installed!"
 	}				
@@ -1602,37 +1967,46 @@ function Suspend-EitCitrixBrokerMachine {
 		[Parameter(Mandatory=$true)] [Object[]] $Logger,
 		[Parameter(Mandatory=$false)] [boolean] $EnableDebug
 	) 
-	if ($EnableDebug) {		
+	if ($EnableDebug) 
+	{		
 		$Logger.Debug("Command: Suspend-EitBrokerMachine -MachineName " + $MachineName + " -DDCAddress " + $DDCAddress + " -Logger " +  $Logger + " -EnableDebug " + $EnableDebug)
 	}
 	$SnapinTest = $null
 	$SnapinName = "Citrix.Broker.Admin.V2"
-	if ((Get-PSSnapin | ? { $_.Name -eq $SnapinName }) -eq $null) {
+	if ((Get-PSSnapin | ? { $_.Name -eq $SnapinName }) -eq $null) 
+	{
     	Add-PSSnapin $SnapinName -ErrorAction SilentlyContinue
 	}
 	$SnapinTest = Get-PSSnapin Citrix.Broker.Admin.V2 -ErrorAction SilentlyContinue
-	if ($SnapinTest -ne $null) {
-		If ([Regex]::Matches($MachineName, "\\").Count -ne 0) {
+	if ($SnapinTest -ne $null) 
+	{
+		if ([Regex]::Matches($MachineName, "\\").Count -ne 0) 
+		{
 			$succeeded = $false
 			$tmp = $MachineName.Split("\")
 			$DomainName = $tmp[0]
 			$MachineName = $tmp[1]
 			$TimeOut = 600 
-			try {
-				if ($EnableDebug) {
+			try 
+			{
+				if ($EnableDebug) 
+				{
 					$Logger.Debug("Get Broker Machine $DomainName\$MachineName -AdminAddress $DDCAddress")
 				}	
 				$Logger.Info("Get machine info for machine $DomainName\$MachineName")
 				$MyMachine = Get-BrokerMachine -MachineName ($DomainName + "\" + $MachineName) -AdminAddress $DDCAddress
-				if ($MyMachine.Powerstate -eq "On") {
+				if ($MyMachine.Powerstate -eq "On") 
+				{
 					$Logger.Info("Trying to suspend machine $MachineName ...")
 					$BrokerHostingPowerAction = New-BrokerHostingPowerAction -Action Suspend -MachineName $MyMachine.MachineName -AdminAddress $DDCAddress
-					if ($EnableDebug) {
+					if ($EnableDebug) 
+					{
 						$Logger.Debug("BrokerHostingPowerAction UID: " + $BrokerHostingPowerAction.UID)
 					}
 					$i = 0
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
-					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) {
+					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) 
+					{
 						$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 						$Logger.Info("BrokerHostingPowerAction state of machine " + $MyMachine.MachineName + " is $BrokerHostingPowerActionState, waiting for completion... ($i / $TimeOut)")
 						Start-Sleep -Milliseconds 5000
@@ -1640,30 +2014,36 @@ function Suspend-EitCitrixBrokerMachine {
 					}
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 
-					if ($BrokerHostingPowerActionState -eq "Completed") {
+					if ($BrokerHostingPowerActionState -eq "Completed") 
+					{
 						$MyLogger.Info("Machine $MachineName successfuly suspended!")
 					}
-					else {
+					else 
+					{
 						$Logger.Error("TimeOut reached, while suspending machine $MachineName!")
 						Throw "TimeOut reached, while suspending machine $MachineName!"
 					}
 				}
-				else {
+				else 
+				{
 					Throw ("Unable to suspend machine $MachineName, Powerstate is " + $MyMachine.Powerstate)
 				}	
 			}
-			catch [System.Exception] {
+			catch [System.Exception] 
+			{
 				$succeeded = $false
 				$Logger.Error("Problem while performing power action for machine " + $MachineName + ": " + $_ )
 				throw $_
 			}	
 		}	
-		else {
+		else 
+		{
 			$Logger.Error("MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'")
 			throw "MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'"
 		}	
 	}
-	else {
+	else 
+	{
 		$Logger.Error("Required PSSnapin Citrix.Broker.Admin.V2 is not installed!")
 		throw "Required PSSnapin Citrix.Broker.Admin.V2 is not installed!"
 	}				
@@ -1712,37 +2092,46 @@ function Resume-EitCitrixBrokerMachine {
 		[Parameter(Mandatory=$true)] [Object[]] $Logger,
 		[Parameter(Mandatory=$false)] [boolean] $EnableDebug
 	) 
-	if ($EnableDebug) {		
+	if ($EnableDebug) 
+	{		
 		$Logger.Debug("Command: Resume-EitBrokerMachine -MachineName " + $MachineName + " -DDCAddress " + $DDCAddress + " -Logger " +  $Logger + " -EnableDebug " + $EnableDebug)
 	}
 	$SnapinTest = $null
 	$SnapinName = "Citrix.Broker.Admin.V2"
-	if ((Get-PSSnapin | ? { $_.Name -eq $SnapinName }) -eq $null) {
+	if ((Get-PSSnapin | ? { $_.Name -eq $SnapinName }) -eq $null) 
+	{
     	Add-PSSnapin $SnapinName -ErrorAction SilentlyContinue
 	}
 	$SnapinTest = Get-PSSnapin Citrix.Broker.Admin.V2 -ErrorAction SilentlyContinue
-	if ($SnapinTest -ne $null) {
-		If ([Regex]::Matches($MachineName, "\\").Count -ne 0) {
+	if ($SnapinTest -ne $null) 
+	{
+		if ([Regex]::Matches($MachineName, "\\").Count -ne 0) 
+		{
 			$succeeded = $false
 			$tmp = $MachineName.Split("\")
 			$DomainName = $tmp[0]
 			$MachineName = $tmp[1]
 			$TimeOut = 600 
-			try {
-				if ($EnableDebug) {
+			try 
+			{
+				if ($EnableDebug) 
+				{
 					$Logger.Debug("Get Broker Machine $DomainName\$MachineName -AdminAddress $DDCAddress")
 				}	
 				$Logger.Info("Get machine info for machine $DomainName\$MachineName")
 				$MyMachine = Get-BrokerMachine -MachineName ($DomainName + "\" + $MachineName) -AdminAddress $DDCAddress
-				if ($MyMachine.Powerstate -eq "Suspended") {
+				if ($MyMachine.Powerstate -eq "Suspended") 
+				{
 					$Logger.Info("Trying to resume machine $MachineName ...")
 					$BrokerHostingPowerAction = New-BrokerHostingPowerAction -Action Resume -MachineName $MyMachine.MachineName -AdminAddress $DDCAddress
-					if ($EnableDebug) {
+					if ($EnableDebug) 
+					{
 						$Logger.Debug("BrokerHostingPowerAction UID: " + $BrokerHostingPowerAction.UID)
 					}
 					$i = 0
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
-					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) {
+					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) 
+					{
 						$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 						$Logger.Info("BrokerHostingPowerAction state of machine " + $MyMachine.MachineName + " is $BrokerHostingPowerActionState, waiting for completion... ($i / $TimeOut)")
 						Start-Sleep -Milliseconds 5000
@@ -1750,30 +2139,36 @@ function Resume-EitCitrixBrokerMachine {
 					}
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 
-					if ($BrokerHostingPowerActionState -eq "Completed") {
+					if ($BrokerHostingPowerActionState -eq "Completed") 
+					{
 						$MyLogger.Info("Machine $MachineName successfuly resumed!")
 					}
-					else {
+					else 
+					{
 						$Logger.Error("TimeOut reached, while resuming machine $MachineName!")
 						Throw "TimeOut reached, while resuming machine $MachineName!"
 					}
 				}
-				else {
+				else 
+				{
 					Throw ("Unable to resume machine $MachineName, Powerstate is " + $MyMachine.Powerstate)
 				}	
 			}
-			catch [System.Exception] {
+			catch [System.Exception] 
+			{
 				$succeeded = $false
 				$Logger.Error("Problem while performing power action for machine " + $MachineName + ": " + $_ )
 				throw $_
 			}	
 		}	
-		else {
+		else 
+		{
 			$Logger.Error("MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'")
 			throw "MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'"
 		}	
 	}
-	else {
+	else 
+	{
 		$Logger.Error("Required PSSnapin Citrix.Broker.Admin.V2 is not installed!")
 		throw "Required PSSnapin Citrix.Broker.Admin.V2 is not installed!"
 	}				
@@ -1827,32 +2222,40 @@ function Reset-EitCitrixBrokerMachine {
 	}
 	$SnapinTest = $null
 	$SnapinName = "Citrix.Broker.Admin.V2"
-	if ((Get-PSSnapin | ? { $_.Name -eq $SnapinName }) -eq $null) {
+	if ((Get-PSSnapin | ? { $_.Name -eq $SnapinName }) -eq $null) 
+	{
     	Add-PSSnapin $SnapinName -ErrorAction SilentlyContinue
 	}
 	$SnapinTest = Get-PSSnapin Citrix.Broker.Admin.V2 -ErrorAction SilentlyContinue
-	if ($SnapinTest -ne $null) {
-		If ([Regex]::Matches($MachineName, "\\").Count -ne 0) {
+	if ($SnapinTest -ne $null) 
+	{
+		if ([Regex]::Matches($MachineName, "\\").Count -ne 0) 
+		{
 			$succeeded = $false
 			$tmp = $MachineName.Split("\")
 			$DomainName = $tmp[0]
 			$MachineName = $tmp[1]
 			$TimeOut = 600 
-			try {
-				if ($EnableDebug) {
+			try 
+			{
+				if ($EnableDebug) 
+				{
 					$Logger.Debug("Get Broker Machine $DomainName\$MachineName -AdminAddress $DDCAddress")
 				}	
 				$Logger.Info("Get machine info for machine $DomainName\$MachineName")
 				$MyMachine = Get-BrokerMachine -MachineName ($DomainName + "\" + $MachineName) -AdminAddress $DDCAddress
-				if ($MyMachine.Powerstate -eq "On") {
+				if ($MyMachine.Powerstate -eq "On") 
+				{
 					$Logger.Info("Trying to reset machine $MachineName ...")
 					$BrokerHostingPowerAction = New-BrokerHostingPowerAction -Action Reset -MachineName $MyMachine.MachineName -AdminAddress $DDCAddress
-					if ($EnableDebug) {
+					if ($EnableDebug) 
+					{
 						$Logger.Debug("BrokerHostingPowerAction UID: " + $BrokerHostingPowerAction.UID)
 					}
 					$i = 0
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
-					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) {
+					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) 
+					{
 						$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 						$Logger.Info("BrokerHostingPowerAction state of machine " + $MyMachine.MachineName + " is $BrokerHostingPowerActionState, waiting for completion... ($i / $TimeOut)")
 						Start-Sleep -Milliseconds 5000
@@ -1860,30 +2263,36 @@ function Reset-EitCitrixBrokerMachine {
 					}
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 
-					if ($BrokerHostingPowerActionState -eq "Completed") {
+					if ($BrokerHostingPowerActionState -eq "Completed") 
+					{
 						$MyLogger.Info("Machine $MachineName successfuly reseted!")
 					}
-					else {
+					else 
+					{
 						$Logger.Error("TimeOut reached, while reseting machine $MachineName!")
 						Throw "TimeOut reached, while reseting machine $MachineName!"
 					}
 				}
-				else {
+				else 
+				{
 					Throw ("Unable to reset machine $MachineName, Powerstate is " + $MyMachine.Powerstate)
 				}	
 			}
-			catch [System.Exception] {
+			catch [System.Exception] 
+			{
 				$succeeded = $false
 				$Logger.Error("Problem while performing power action for machine " + $MachineName + ": " + $_ )
 				throw $_
 			}	
 		}	
-		else {
+		else 
+		{
 			$Logger.Error("MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'")
 			throw "MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'"
 		}	
 	}
-	else {
+	else 
+	{
 		$Logger.Error("Required PSSnapin Citrix.Broker.Admin.V2 is not installed!")
 		throw "Required PSSnapin Citrix.Broker.Admin.V2 is not installed!"
 	}				
@@ -1932,37 +2341,46 @@ function Invoke-EitCitrixBrokerMachineShutdown {
 		[Parameter(Mandatory=$true)] [Object[]] $Logger,
 		[Parameter(Mandatory=$false)] [boolean] $EnableDebug
 	) 
-	if ($EnableDebug) {		
+	if ($EnableDebug) 
+	{		
 		$Logger.Debug("Command: Invoke-EitBrokerMachineShutdown -MachineName " + $MachineName + " -DDCAddress " + $DDCAddress + " -Logger " +  $Logger + " -EnableDebug " + $EnableDebug)
 	}
 	$SnapinTest = $null
 	$SnapinName = "Citrix.Broker.Admin.V2"
-	if ((Get-PSSnapin | ? { $_.Name -eq $SnapinName }) -eq $null) {
+	if ((Get-PSSnapin | ? { $_.Name -eq $SnapinName }) -eq $null) 
+	{
     	Add-PSSnapin $SnapinName -ErrorAction SilentlyContinue
 	}
 	$SnapinTest = Get-PSSnapin Citrix.Broker.Admin.V2 -ErrorAction SilentlyContinue
-	if ($SnapinTest -ne $null) {
-		If ([Regex]::Matches($MachineName, "\\").Count -ne 0) {
+	if ($SnapinTest -ne $null) 
+	{
+		if ([Regex]::Matches($MachineName, "\\").Count -ne 0) 
+		{
 			$succeeded = $false
 			$tmp = $MachineName.Split("\")
 			$DomainName = $tmp[0]
 			$MachineName = $tmp[1]
 			$TimeOut = 600 
-			try {
-				if ($EnableDebug) {
+			try 
+			{
+				if ($EnableDebug) 
+				{
 					$Logger.Debug("Get Broker Machine $DomainName\$MachineName -AdminAddress $DDCAddress")
 				}	
 				$Logger.Info("Get machine info for machine $DomainName\$MachineName")
 				$MyMachine = Get-BrokerMachine -MachineName ($DomainName + "\" + $MachineName) -AdminAddress $DDCAddress
-				if ($MyMachine.Powerstate -eq "On") {
+				if ($MyMachine.Powerstate -eq "On") 
+				{
 					$Logger.Info("Trying to shutdown machine $MachineName ...")
 					$BrokerHostingPowerAction = New-BrokerHostingPowerAction -Action Shutdown -MachineName $MyMachine.MachineName -AdminAddress $DDCAddress
-					if ($EnableDebug) {
+					if ($EnableDebug) 
+					{
 						$Logger.Debug("BrokerHostingPowerAction UID: " + $BrokerHostingPowerAction.UID)
 					}
 					$i = 0
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
-					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) {
+					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) 
+					{
 						$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 						$Logger.Info("BrokerHostingPowerAction state of machine " + $MyMachine.MachineName + " is $BrokerHostingPowerActionState, waiting for completion... ($i / $TimeOut)")
 						Start-Sleep -Milliseconds 5000
@@ -1970,30 +2388,36 @@ function Invoke-EitCitrixBrokerMachineShutdown {
 					}
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 
-					if ($BrokerHostingPowerActionState -eq "Completed") {
+					if ($BrokerHostingPowerActionState -eq "Completed") 
+					{
 						$MyLogger.Info("Machine $MachineName successfuly shutdown!")
 					}
-					else {
+					else 
+					{
 						$Logger.Error("TimeOut reached, while shutdown machine $MachineName!")
 						Throw "TimeOut reached, while shutdown machine $MachineName!"
 					}
 				}
-				else {
+				else 
+				{
 					Throw ("Unable to shutdown machine $MachineName, Powerstate is " + $MyMachine.Powerstate)
 				}	
 			}
-			catch [System.Exception] {
+			catch [System.Exception] 
+			{
 				$succeeded = $false
 				$Logger.Error("Problem while performing power action for machine " + $MachineName + ": " + $_ )
 				throw $_
 			}	
 		}	
-		else {
+		else 
+		{
 			$Logger.Error("MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'")
 			throw "MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'"
 		}	
 	}
-	else {
+	else 
+	{
 		$Logger.Error("Required PSSnapin Citrix.Broker.Admin.V2 is not installed!")
 		throw "Required PSSnapin Citrix.Broker.Admin.V2 is not installed!"
 	}				
@@ -2042,37 +2466,46 @@ function Restart-EitCitrixBrokerMachine {
 		[Parameter(Mandatory=$true)] [Object[]] $Logger,
 		[Parameter(Mandatory=$false)] [boolean] $EnableDebug
 	) 
-	if ($EnableDebug) {		
+	if ($EnableDebug) 
+	{		
 		$Logger.Debug("Command: Restart-EitBrokerMachine -MachineName " + $MachineName + " -DDCAddress " + $DDCAddress + " -Logger " +  $Logger + " -EnableDebug " + $EnableDebug)
 	}
 	$SnapinTest = $null
 	$SnapinName = "Citrix.Broker.Admin.V2"
-	if ((Get-PSSnapin | ? { $_.Name -eq $SnapinName }) -eq $null) {
+	if ((Get-PSSnapin | ? { $_.Name -eq $SnapinName }) -eq $null) 
+	{
     	Add-PSSnapin $SnapinName -ErrorAction SilentlyContinue
 	}
 	$SnapinTest = Get-PSSnapin Citrix.Broker.Admin.V2 -ErrorAction SilentlyContinue
-	if ($SnapinTest -ne $null) {
-		If ([Regex]::Matches($MachineName, "\\").Count -ne 0) {
+	if ($SnapinTest -ne $null) 
+	{
+		if ([Regex]::Matches($MachineName, "\\").Count -ne 0) 
+		{
 			$succeeded = $false
 			$tmp = $MachineName.Split("\")
 			$DomainName = $tmp[0]
 			$MachineName = $tmp[1]
 			$TimeOut = 600 
-			try {
-				if ($EnableDebug) {
+			try 
+			{
+				if ($EnableDebug) 
+				{
 					$Logger.Debug("Get Broker Machine $DomainName\$MachineName -AdminAddress $DDCAddress")
 				}	
 				$Logger.Info("Get machine info for machine $DomainName\$MachineName")
 				$MyMachine = Get-BrokerMachine -MachineName ($DomainName + "\" + $MachineName) -AdminAddress $DDCAddress
-				if ($MyMachine.Powerstate -eq "On") {
+				if ($MyMachine.Powerstate -eq "On") 
+				{
 					$Logger.Info("Trying to restart machine $MachineName ...")
 					$BrokerHostingPowerAction = New-BrokerHostingPowerAction -Action Restart -MachineName $MyMachine.MachineName -AdminAddress $DDCAddress
-					if ($EnableDebug) {
+					if ($EnableDebug) 
+					{
 						$Logger.Debug("BrokerHostingPowerAction UID: " + $BrokerHostingPowerAction.UID)
 					}
 					$i = 0
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
-					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) {
+					while (($BrokerHostingPowerActionState -ne "Completed") -and ($i -lt $TimeOut)) 
+					{
 						$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 						$Logger.Info("BrokerHostingPowerAction state of machine " + $MyMachine.MachineName + " is $BrokerHostingPowerActionState, waiting for completion... ($i / $TimeOut)")
 						Start-Sleep -Milliseconds 5000
@@ -2080,30 +2513,36 @@ function Restart-EitCitrixBrokerMachine {
 					}
 					$BrokerHostingPowerActionState = $(Get-BrokerHostingPowerAction -UID $BrokerHostingPowerAction.UID -AdminAddress $DDCAddress).State
 
-					if ($BrokerHostingPowerActionState -eq "Completed") {
+					if ($BrokerHostingPowerActionState -eq "Completed") 
+					{
 						$MyLogger.Info("Machine $MachineName successfuly restarted!")
 					}
-					else {
+					else 
+					{
 						$Logger.Error("TimeOut reached, while restarting machine $MachineName!")
 						Throw "TimeOut reached, while restarting machine $MachineName!"
 					}
 				}
-				else {
+				else 
+				{
 					Throw ("Unable to restart machine $MachineName, Powerstate is " + $MyMachine.Powerstate)
 				}	
 			}
-			catch [System.Exception] {
+			catch [System.Exception] 
+			{
 				$succeeded = $false
 				$Logger.Error("Problem while performing power action for machine " + $MachineName + ": " + $_ )
 				throw $_
 			}	
 		}	
-		else {
+		else 
+		{
 			$Logger.Error("MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'")
 			throw "MachineName $MachineName is not in the correct format! MachineName has to be 'DomainName\ComputerName'"
 		}	
 	}
-	else {
+	else 
+	{
 		$Logger.Error("Required PSSnapin Citrix.Broker.Admin.V2 is not installed!")
 		throw "Required PSSnapin Citrix.Broker.Admin.V2 is not installed!"
 	}				
@@ -2148,28 +2587,35 @@ Param (
 	$StatusMessage = "Error while session machine list!"
 	
 	$DSNfile = "C:\Program Files (x86)\Citrix\Independent Management Architecture\MF20.dsn"
-	try {
+	try 
+	{
 		if (Test-Path $DSNfile) { $FarmType = "XenApp" }
-		foreach ($item in $FarmEntryPoints) {
-			if (Test-EitPort -server $item -port 5985 -timeout "1000") {
+		foreach ($item in $FarmEntryPoints) 
+		{
+			if (Test-EitPort -server $item -port 5985 -timeout "1000") 
+			{
 				$PSSession = New-PSSession -ComputerName $item -ErrorAction stop 
 				$DSNCheck = Invoke-Command -Session $PSSession -ScriptBlock {Test-Path $args[0]} -ArgumentList $DSNfile
-				If ($DSNCheck -eq $true) { $FarmType = "XenApp" }
-				if ($FarmType -eq "XenApp") {
+				if ($DSNCheck -eq $true) { $FarmType = "XenApp" }
+				if ($FarmType -eq "XenApp") 
+				{
 					Invoke-Command -Session $PSSession -ScriptBlock {Add-PSSnapin citrix.xenapp.commands} -ErrorAction stop
 					$XASessions = Invoke-Command -Session $PSSession -ScriptBlock {Get-XASession -Farm | select accountname, servername}
 					Remove-PSSession -Session $PSSession
-					foreach ($XASession in $XASessions) {
+					foreach ($XASession in $XASessions) 
+					{
 						#$SessionList += (Make-EITSessionDataData -UserName $XASession.AccountName -ServerName $XASession.ServerName)
 					}
 					
 					$StatusMessage = "Successfully read session list..."
 					$bSuccess = $true
 				}
-				else {
+				else 
+				{
 					Invoke-Command -Session $PSSession -ScriptBlock {Add-PSSnapin citrix*} -ErrorAction stop
 					$BrokerSessions = Invoke-Command -Session $PSSession -ScriptBlock {param($Username) Get-BrokerSession -MaxRecordCount 100000 | Where {$_.UserName -eq $Username}} -ArgumentList $UserName
-					foreach ($BrokerSession in $BrokerSessions) {
+					foreach ($BrokerSession in $BrokerSessions) 
+					{
 						Write-Host "   Stopping session $($BrokerSession.SessionKey) from Server $($BrokerSession.MachineName)..."
 						Invoke-Command -Session $PSSession -ScriptBlock {param($BrokerSession) Stop-BrokerSession $BrokerSession } -ArgumentList $BrokerSession
 					}
@@ -2178,12 +2624,14 @@ Param (
 					$bSuccess = $true
 				}
 			}
-			else {
+			else 
+			{
 				Write-Host "Server $item is not reachable"
 			}
 		}
 	}
-	catch {
+	catch 
+	{
 		$bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
@@ -2236,7 +2684,8 @@ function Stop-EitBrokerSession {
 		[Parameter(Mandatory=$false)] [boolean] $EnableDebug
 	)
        
-	try {
+	try 
+	{
 		
 		$EnableLog = $false
 		$bSuccess = $false
@@ -2295,7 +2744,8 @@ function Stop-EitBrokerSession {
 		
 		$i = 0
 		$UserSession = Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID -ErrorAction SilentlyContinue} -ArgumentList $UID 
-		If ($UserSession -ne $null) {
+		if ($UserSession -ne $null) 
+		{
 			if ($Logger -eq $null)
 			{
 				Write-Host "stopping session..."
@@ -2305,7 +2755,8 @@ function Stop-EitBrokerSession {
 				$Logger.Info("stopping session...")
 			}	
 			$rc = Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID | Stop-BrokerSession -ErrorAction SilentlyContinue} -ArgumentList $UID
-			while (($(Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID -ErrorAction SilentlyContinue} -ArgumentList $UID) -ne $null) -and ($i -lt $TimeOut)) {
+			while (($(Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID -ErrorAction SilentlyContinue} -ArgumentList $UID) -ne $null) -and ($i -lt $TimeOut)) 
+			{
 				Start-Sleep -Milliseconds 1000
 				if ($Logger -eq $null)
 				{
@@ -2331,18 +2782,22 @@ function Stop-EitBrokerSession {
 						$Logger.Info($message)
 					}		
 			}
-			else {
+			else 
+			{
 				throw "ERROR: TimeOut ($TimeOut s) reached, while stopping session!"
 			}
 		}	
-		else {
+		else 
+		{
 			throw "ERROR, no session found with UID $UID"
 	    }
 	}
-	catch {
+	catch 
+	{
 	    throw $_.Exception.Message
 	}
-	finally {
+	finally 
+	{
 		Remove-PSSession -Session $PSSession
 	}
 }
@@ -2387,7 +2842,8 @@ function Get-EitBrokerSessions {
 	$bSuccess = $false
 	$StatusMessage = "Error while reading session list!"
 	
-	function Make-EITSBrokerSessionData($UserName, $MachineName, $SessionState, $UserUPN, $Uid) {
+	function Make-EITSBrokerSessionData($UserName, $MachineName, $SessionState, $UserUPN, $Uid) 
+	{
 		$out = New-Object psobject
 		$out | add-member -type noteproperty -name UserName $UserName
 		$out | add-member -type noteproperty -name UserUPN $UserUPN
@@ -2498,7 +2954,8 @@ function Stop-EitAllBrokerSessionOnMachine {
 		[Parameter(Mandatory=$false)] 	[Switch] $EnableDebug
 	)
        
-	try {
+	try 
+	{
 		$PSSession = $null
 		$EnableLog = $false
 		$bSuccess = $false
@@ -2547,19 +3004,23 @@ function Stop-EitAllBrokerSessionOnMachine {
 				$bSuccess = $true
 				$StatusMessage = "Successfully stopped machine sessions"
 			}	
-			else {
+			else 
+			{
 				Throw "ERROR, no sessions found on machine $MachineName"
 			}
 		}	
-		else {
+		else 
+		{
 			Throw "MachineName must be in the format DomainName\MachineName"
 		}	
 	}
-	catch {
+	catch 
+	{
 	    $bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
-	finally {
+	finally 
+	{
 		if ($PSSession -ne $null) 
 		{
 			if (Get-PSSession -Id $PSSession.Id -ErrorAction SilentlyContinue) 
@@ -2619,7 +3080,8 @@ function Stop-EitAllBrokerSessionForUser {
 		[Parameter(Mandatory=$false)] 	[Switch] $EnableDebug
 	)
        
-	try {
+	try 
+	{
 		$PSSession = $null
 		$EnableLog = $false
 		$bSuccess = $false
@@ -2671,7 +3133,8 @@ function Stop-EitAllBrokerSessionForUser {
 						$bSuccess = $true
 						$StatusMessage = "Successfully stopped user sessions"
 					}	
-					else {
+					else 
+					{
 						if ($EnableLog) {$Logger.Error("No sessions found for user $UserName")}
 					}
 				}	
@@ -2681,15 +3144,18 @@ function Stop-EitAllBrokerSessionForUser {
 				}
 			}	
 		}	
-		else {
+		else 
+		{
 			Throw "UserName must be in the format DomainName\UserName"
 		}	
 	}
-	catch {
+	catch 
+	{
 	    $bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
-	finally {
+	finally 
+	{
 		if ($PSSession -ne $null) 
 		{
 			if (Get-PSSession -Id $PSSession.Id -ErrorAction SilentlyContinue) 

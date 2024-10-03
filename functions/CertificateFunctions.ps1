@@ -283,11 +283,11 @@ function New-EitCertificateSigningRequest {
 		[ValidateNotNullOrEmpty()]
 		[String] $OpenSslPath = "C:\educateitssl\openssl.exe",
 		
-		[Parameter(Mandatory=$false, HelpMessage="OpenSSL executable file path")]
+		[Parameter(Mandatory=$false, HelpMessage="The output path")]
 		[ValidateNotNullOrEmpty()]
 		[String] $OutputPath = "C:\Program Files\EducateIT\Keys",
 		
-		[Parameter(Mandatory=$false, HelpMessage="OpenSSL executable file path")]
+		[Parameter(Mandatory=$false, HelpMessage="the output base name")]
 		[ValidateNotNullOrEmpty()]
 		[String] $OutputName = "Raptor-Server",
 		
