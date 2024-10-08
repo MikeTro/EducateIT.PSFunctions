@@ -608,8 +608,8 @@ function Get-EitCitrixMachineInfo {
 			}
 			
 		}
-		$myDNSDomainName = $MyBrokerMachine.DNSName.Replace(($MyBrokerMachine.PublishedName + "."),"")
-		$EitADComputer = Get-EitADComputer -ComputerName $MyBrokerMachine.PublishedName -DNSDomainName $myDNSDomainName
+		$myDNSDomainName = $MyBrokerMachine.DNSName.Replace(($MachineName + "."),"")
+		$EitADComputer = Get-EitADComputer -ComputerName $MachineName -DNSDomainName $myDNSDomainName
 		$myAcctADAccount = Get-AcctADAccount -ADAccountSid $EitADComputer.ADObject.SID.Value -AdminAddress $DDCAddress -ErrorAction SilentlyContinue
 		
 	}	
