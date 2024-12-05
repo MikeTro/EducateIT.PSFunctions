@@ -2,7 +2,7 @@
 # CitrixFunctions.ps1
 # ===========================================================================
 # (c)2024 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.19
+# Version 1.20
 #
 # Citrix Functions for Raptor Scripts
 #
@@ -29,6 +29,7 @@
 #  V1.18 - 01.10.2024 - M.Trojahn - Return success even if ProvVM doesn't exists in Get-EitCitrixMachineInfo
 #  V1.19 - 03.10.2024 - M.Trojahn - add more information: ProvVM, AcctADAccount & BrokerMachine in Function Get-EitCitrixMachineInfo
 #									do some code style cleanup
+#  V1.20 - 04.12.2024 - M.Trojahn - add function Get-EitBrokerSession, Stop-BrokerSession2
 #
 
 
@@ -2639,168 +2640,75 @@ Param (
 	return $ReturnObject
 }
 
-function Stop-EitBrokerSession {
+function Stop-EitBrokerSession2 
+{
 <#
-       .SYNOPSIS
-             This functions stops a sesion.
+	.SYNOPSIS
+		This functions stops a sesion.
 
-       .DESCRIPTION
-             Use this function to stop a session
+	.DESCRIPTION
+		Use this function to stop a session
 
-       .PARAMETER  DDC
-             The DDC where you wish to execute the action
+	.PARAMETER  DDC
+		The DDC where you want to perform the action
 
-       .PARAMETER  UID
-             The UID of the session
-			 
-		.Parameter Logger
-			The EducateIT FileLogger object
-			Has to be created before with the New-EitFileLogger command
+	.PARAMETER  UID
+		The UID of the session
 
-		.Parameter EnableDebug
-			Enables the debug log	
+	.EXAMPLE
+		Stop-EitBrokerSession2 -DDC MyBroker -UID MyUID
 
-       .EXAMPLE
-            Stop-EitBrokerSession -DDC MyBroker -UID MyUID
-			 
-		.EXAMPLE
-            Stop-EitBrokerSession -DDC MyBroker -UID MyUID -Logger MyLogger -EnableDebug $ture 
-       
-       .NOTES  
-			Copyright	: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch 
-			Version		: 1.2
-			History:
-				V1.0 - 14.08.2019 - M.Trojahn - Initial creation  
-				V1.1 - 21.12.2022 - M.Trojahn - Remove MaxRecordCount 
-				V1.2 - 12.12.2023 - M.Trojahn - add Logger 
+	.NOTES  
+		Copyright	: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch 
+		Version		: 1.0
+		History:
+			V1.0 - 04.12.2024 - M.Trojahn - Initial creation based on Stop-EitBrokerSession for better script handling.
+					
 
 #>
 
     param (
 		[Parameter(Mandatory=$true)][string] $DDC,
 		[Parameter(Mandatory=$true)][string] $UID,
-		[Parameter(Mandatory=$false)][int] $TimeOut = 600,
-		[Parameter(Mandatory=$false)] [Object[]] $Logger,
-		[Parameter(Mandatory=$false)] [boolean] $EnableDebug
+		[Parameter(Mandatory=$false)][string] $WinRMPort=5985
 	)
        
 	try 
 	{
-		
-		$EnableLog = $false
 		$bSuccess = $false
 		$StatusMessage = "Error while stopping user sessions!"
 		
-		if ($Logger -ne $null)
+		if (Test-EitPort -server $DDC -port $WinRMPort -timeout "1000") 
 		{
-			$EnableLog = $true
-		}
+			$mySessionInfo = Get-EitBrokerSession -DDC $DDC -UID $UID
 			
-		if (($EnableLog -eq $false) -And ($EnableDebug)) 
-		{
-			$EnableDebug = $false
-			throw "Logger parameter is missing!"
-		}
-		
-		if ($EnableDebug) 
-		{ 
-			$Logger.Debug("Start function Stop-EitBrokerSession") 
-			$Logger.Debug("DDC: $DDC") 
-			$Logger.Debug("UID: $UID") 
-			$Logger.Debug("EnableDebug: EnableDebug") 
-			$Logger.Debug($Logger) 
-			
-		}
-		
-		$startTime = Get-Date
-		
-		if ($Logger -eq $null)
-		{
-			Write-Host "connecting to Citrix DDC $DDC"
-		}
-		else 
-		{
-			$Logger.Info("connecting to Citrix DDC $DDC")
-		}
-		
-		$PSSession = New-PSSession -ComputerName $DDC
-		if ($Logger -eq $null)
-		{
-			Write-Host "loading Citrix Broker Snapins..."
-		}	
-		else 
-		{
-			$Logger.Info("loading Citrix Broker Snapins...")
-		}	
-		$rc = Invoke-Command -Session $PSSession -ScriptBlock { Add-PSSnapin Citrix.Broker.*}
-		if ($Logger -eq $null)
-		{
-			Write-Host "reading session infomation for session $uid..."
-		}
-		else 
-		{
-			$Logger.Info("reading session infomation for session $uid...")
-		}
-		
-		$i = 0
-		$UserSession = Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID -ErrorAction SilentlyContinue} -ArgumentList $UID 
-		if ($UserSession -ne $null) 
-		{
-			if ($Logger -eq $null)
+			if ($mySessionInfo.Success -eq $true)
 			{
-				Write-Host "stopping session..."
+				$PSSession = New-PSSession -ComputerName $DDC
+				$rc = Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID | Stop-BrokerSession -ErrorAction SilentlyContinue} -ArgumentList $UID
+				Remove-PSSession -Session $PSSession
+				$StatusMessage = "Successfully called Stop-BrokerSessionCommand."
+				$bSuccess = $true
 			}
 			else 
 			{
-				$Logger.Info("stopping session...")
-			}	
-			$rc = Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID | Stop-BrokerSession -ErrorAction SilentlyContinue} -ArgumentList $UID
-			while (($(Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID -ErrorAction SilentlyContinue} -ArgumentList $UID) -ne $null) -and ($i -lt $TimeOut)) 
-			{
-				Start-Sleep -Milliseconds 1000
-				if ($Logger -eq $null)
-				{
-					Write-Host "   Session is still alive, waiting for session to stop ($i / $TimeOut)..." 
-				}
-				else 
-				{
-					$Logger.Info("   Session is still alive, waiting for session to stop ($i / $TimeOut)...")
-				}	
-				$i++
+				throw ($mySessionInfo.Message)
 			}
-			$UserSession = Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID -ErrorAction SilentlyContinue} -ArgumentList $UID
-			$endTime = get-Date
-			if ($UserSession -eq $null) {
-					$LogoffTime = $endTime - $startTime
-					$message = "Session successfully stopped in " + $LogoffTime.Minutes + "m " + $LogoffTime.Seconds + "s"
-					if ($Logger -eq $null)
-					{
-						Write-Host $message
-					}
-					else 
-					{
-						$Logger.Info($message)
-					}		
-			}
-			else 
-			{
-				throw "ERROR: TimeOut ($TimeOut s) reached, while stopping session!"
-			}
-		}	
-		else 
+		}
+		else
 		{
-			throw "ERROR, no session found with UID $UID"
-	    }
+			throw "ERROR: Server $DDC cannot be reached!"
+		}		
 	}
 	catch 
 	{
-	    throw $_.Exception.Message
+	    $bSuccess = $false
+		$StatusMessage = $_.Exception.Message
 	}
-	finally 
-	{
-		Remove-PSSession -Session $PSSession
-	}
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage})
+	return $ReturnObject
 }
+
 
 
 function Get-EitBrokerSessions {
@@ -2903,9 +2811,6 @@ function Get-EitBrokerSessions {
 	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;SessionList=$SessionList})
 	return $ReturnObject
 }
-
-
-
 
 
 function Stop-EitAllBrokerSessionOnMachine {
@@ -3170,3 +3075,72 @@ function Stop-EitAllBrokerSessionForUser {
 }
 
 
+function Get-EitBrokerSession 
+{
+<#
+	.SYNOPSIS
+		Get a Citrix user session
+
+	.DESCRIPTION
+		Get a Citrix user session
+
+	.PARAMETER  DDC
+		The DDC where you want to perform the action
+
+	.PARAMETER  UID
+		The UID of the session
+
+	.EXAMPLE
+		Get-EitBrokerSession -DDC MyBroker -UID MyUID
+
+	.NOTES  
+		Copyright	: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch 
+		Version		: 1.0
+		History:
+			V1.0 - 04.12.2024 - M.Trojahn - Initial creation  
+		
+
+#>
+
+    param (
+		[Parameter(Mandatory=$true)][string] $DDC,
+		[Parameter(Mandatory=$true)][string] $UID,
+		[Parameter(Mandatory=$false)][string] $WinRMPort=5985
+	)
+       
+	try 
+	{
+		$bSuccess = $false
+		$MySessionInfo = $null
+		$StatusMessage = "An error occurred when trying to get a user session!"
+		
+		if (Test-EitPort -server $DDC -port $WinRMPort -timeout "1000") 
+		{
+			$PSSession = New-PSSession -ComputerName $DDC
+			$rc = Invoke-Command -Session $PSSession -ScriptBlock { Add-PSSnapin Citrix.Broker.*}
+			$myUserSession = $null
+			$myUserSession = Invoke-Command -Session $PSSession -ScriptBlock {param($UID) Get-BrokerSession -UID $UID -ErrorAction SilentlyContinue} -ArgumentList $UID 
+			if ($myUserSession -ne $null) 
+			{
+				$StatusMessage = "User session successfully obtained."
+				$bSuccess = $true
+			}	
+			else 
+			{
+				throw "ERROR: no session found with UID $UID"
+			}
+			Remove-PSSession -Session $PSSession
+		}
+		else
+		{
+			throw "ERROR: Server $DDC cannot be reached!"
+		}
+	}
+	catch 
+	{
+	    $bSuccess = $false
+		$StatusMessage = $_.Exception.Message
+	}
+	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;SessionInfo=$myUserSession})
+	return $ReturnObject
+}

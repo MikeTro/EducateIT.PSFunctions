@@ -45,6 +45,7 @@
 #  												Return success even if ProvVM doesn't exists in Get-EitCitrixMachineInfo
 #  												add more information: ProvVM, AcctADAccount & BrokerMachine in Function Get-EitCitrixMachineInfo
 #												do some code style cleanup
+#			V2.2.2  - 05.12.2024 - M. Trojahn - CitrixFunctions.ps1: add function Get-EitBrokerSession, Stop-BrokerSession2
 #
 ###############################################################################################
 
@@ -54,7 +55,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '2.2.1'
+ModuleVersion = '2.2.2'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
