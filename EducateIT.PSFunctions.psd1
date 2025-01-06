@@ -46,6 +46,9 @@
 #  												add more information: ProvVM, AcctADAccount & BrokerMachine in Function Get-EitCitrixMachineInfo
 #												do some code style cleanup
 #			V2.2.2  - 05.12.2024 - M. Trojahn - CitrixFunctions.ps1: add function Get-EitBrokerSession, Stop-BrokerSession2
+#			V2.2.3  - 06.01.2025 - M. Trojahn - CertificatesFunctions.ps1: add add Invoke-EitOpenSSLCommand & Convert-EitPfxFile 
+#												modify New-EitCACertificate, New-EitCertificateSigningRequest &  New-EitSelfSignedCertificate to use Invoke-EitOpenSSLCommand
+#												Code optimizations
 #
 ###############################################################################################
 
@@ -55,7 +58,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '2.2.2'
+ModuleVersion = '2.2.3'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -70,7 +73,7 @@ Author = 'EducateIT GmbH'
 CompanyName = 'EducateIT GmbH'
 
 # Copyright statement for this module
-Copyright = '(c) 2024 EducateIT GmbH. All rights reserved.'
+Copyright = '(c) 2025 EducateIT GmbH. All rights reserved.'
 
 # Description of the functionality provided by this module
 Description = 'EducateIT Powershell functions'
