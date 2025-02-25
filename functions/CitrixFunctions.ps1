@@ -1,8 +1,8 @@
 #
 # CitrixFunctions.ps1
 # ===========================================================================
-# (c)2024 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.20
+# (c)2025 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
+# Version 1.21
 #
 # Citrix Functions for Raptor Scripts
 #
@@ -30,6 +30,7 @@
 #  V1.19 - 03.10.2024 - M.Trojahn - add more information: ProvVM, AcctADAccount & BrokerMachine in Function Get-EitCitrixMachineInfo
 #									do some code style cleanup
 #  V1.20 - 04.12.2024 - M.Trojahn - add function Get-EitBrokerSession, Stop-BrokerSession2
+#  V1.21 - 17.02.2025 - M.Trojahn - Add UserName parameter, improve error handling and optimization in Get-EitBrokerSessions
 #
 
 
@@ -2710,107 +2711,135 @@ function Stop-EitBrokerSession2
 }
 
 
-
-function Get-EitBrokerSessions {
-	<#
-	 .Synopsis
-			Get Citrix sessions
-		.Description
-			List Citrix sessions
-		
-		.Parameter Brokers
-			the XenDesktop Controllers
-			
-		.EXAMPLE
-			Get-EitBrokerSessions -Brokers xd01
-			List all sessions from Broker XD01
-	
-		.EXAMPLE
-			Get-EitBrokerSessions -Brokers xd01, xd02
-			List all sessions from brokers XD01 & XD02
-	
-			
-			
-		.NOTES  
-			Copyright	:	(c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.1
-			
-			History:
-				V1.0 - 12.04.2023 - M.Trojahn - Initial creation
-				V1.1 - 25.04.2023 - M.Trojahn - working with HashTable because Get-EitPSUnique is too slow
-	 #>	
-	Param 
-		(	
-			[Parameter(Mandatory=$true)]  [string[]]$Brokers,
-			[Parameter(Mandatory=$false)]  [string[]]$MachineName
-		) 
-		
-	$SessionList = @()
-	$SessionHash = @{}
-	$bSuccess = $false
-	$StatusMessage = "Error while reading session list!"
-	
-	function Make-EITSBrokerSessionData($UserName, $MachineName, $SessionState, $UserUPN, $Uid) 
-	{
-		$out = New-Object psobject
-		$out | add-member -type noteproperty -name UserName $UserName
-		$out | add-member -type noteproperty -name UserUPN $UserUPN
-		$out | add-member -type noteproperty -name Uid $Uid
-		$out | add-member -type noteproperty -name MachineName $MachineName
-		$out | add-member -type noteproperty -name SessionState $SessionState
-		
-		$out
-	}
-
-	try 
-	{
-		foreach ($Broker in $Brokers) 
-		{
-			if (Test-EitPort -server $Broker -port 5985 -timeout "1000") 
+function Get-EitBrokerSessions 
+{
+    <#
+    .Synopsis
+        Get Citrix sessions
+    
+	.Description
+        List Citrix sessions
+    
+	.Parameter Brokers
+        The XenDesktop Controllers
+    
+	.Parameter MachineName
+        The machine name(s) to filter sessions
+    
+	.Parameter UserName
+        The user name to filter sessions
+    
+	.Example
+        Get-EitBrokerSessions -Brokers Broker01
+        List all sessions from Broker Broker01
+    
+	.Example
+        Get-EitBrokerSessions -Brokers Broker01, Broker02
+        List all sessions from brokers Broker01 & Broker02
+    
+	.Notes  
+        Copyright : (c)2025 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+        Version   : 1.2
+        History:
+            V1.0 - 12.04.2023 - M.Trojahn - Initial creation
+            V1.1 - 25.04.2023 - M.Trojahn - Working with HashTable because Get-EitPSUnique is too slow
+            V1.2 - 17.02.2025 - M.Trojahn - Add UserName parameter, improve error handling and optimization
+    #>
+    Param (
+        [Parameter(Mandatory = $true)]  [string[]]$Brokers,
+        [Parameter(Mandatory = $false)] [string[]]$MachineName,
+        [Parameter(Mandatory = $false)] [string[]]$UserName
+    )
+    
+    $SessionList = @()
+    $SessionHash = @{}
+    $bSuccess = $false
+    $StatusMessage = "Error while reading session list!"
+    
+    function Make-EITSBrokerSessionData {
+        Param (
+            [string]$UserName,
+            [string]$MachineName,
+            [string]$SessionState,
+            [string]$UserUPN,
+            [string]$Uid
+        )
+        [PSCustomObject]@{
+            UserName     = $UserName
+            UserUPN      = $UserUPN
+            Uid          = $Uid
+            MachineName  = $MachineName
+            SessionState = $SessionState
+        }
+    }
+    
+    try {
+        foreach ($Broker in $Brokers) {
+            if (Test-EitPort -server $Broker -port 5985 -timeout 1000) 
 			{
-				$Session = New-PSSession -ComputerName $Broker -ErrorAction stop 
-				Invoke-Command -Session $Session -ScriptBlock {Add-PSSnapin citrix*} -ErrorAction stop
-				if ($MachineName -ne $null) 
+                try 
 				{
-					$BrokerSessions = Invoke-Command -Session $Session -ScriptBlock {param($MachineName) Get-BrokerSession -MachineName $MachineName -MaxRecordCount 10000 | Select UserName, Uid, UserUPN, MachineName, SessionState} -ArgumentList $MachineName
-				}	
-				else
+                    $Session = New-PSSession -ComputerName $Broker -ErrorAction Stop 
+                    Invoke-Command -Session $Session -ScriptBlock { Add-PSSnapin citrix* } -ErrorAction Stop
+                    
+                    $ScriptBlock = {
+                        param($MachineName, $UserName)
+                        Get-BrokerSession -MaxRecordCount 10000 |
+                        Where-Object {
+                            (-not $MachineName -or $_.MachineName -in $MachineName) -and
+                            (-not $UserName -or $_.UserName -in $UserName)
+                        } |
+                        Select-Object UserName, Uid, UserUPN, MachineName, SessionState
+                    }
+                    
+                    $BrokerSessions = Invoke-Command -Session $Session -ScriptBlock $ScriptBlock -ArgumentList $MachineName, $UserName
+                } 
+				catch 
 				{
-					$BrokerSessions = Invoke-Command -Session $Session -ScriptBlock {Get-BrokerSession -MaxRecordCount 10000 | Select UserName, Uid, UserUPN, MachineName, SessionState} 
-				}
-				Remove-PSSession -Session $Session
-				foreach ($BrokerSession in $BrokerSessions) 
+                    throw "Error querying broker $Broker : $($_.Exception.Message)"
+                } 
+				finally 
 				{
-					$EITSBrokerSessionData = Make-EITSBrokerSessionData -UserName $BrokerSession.UserName -MachineName $BrokerSession.MachineName -SessionState $BrokerSession.SessionState -Uid $BrokerSession.Uid -UserUPN $BrokerSession.UserUPN
-					if (!($SessionHash.ContainsKey($EITSBrokerSessionData.Uid)))
-					{
-						$SessionHash.add($EITSBrokerSessionData.Uid, $EITSBrokerSessionData)
+                    if ($Session) 
+					{ 
+						Remove-PSSession -Session $Session 
 					}
-				}
-				$StatusMessage = "Successfully read session list..."
-				$bSuccess = $true
-				
-			}
+                }
+                
+                foreach ($BrokerSession in $BrokerSessions) 
+				{
+                    $EITSBrokerSessionData = Make-EITSBrokerSessionData -UserName $BrokerSession.UserName -MachineName $BrokerSession.MachineName -SessionState $BrokerSession.SessionState -Uid $BrokerSession.Uid -UserUPN $BrokerSession.UserUPN
+                    if (-not $SessionHash.ContainsKey($EITSBrokerSessionData.Uid)) 
+					{
+                        $SessionHash[$EITSBrokerSessionData.Uid] = $EITSBrokerSessionData
+                    }
+                }
+                
+                $StatusMessage = "Successfully read session list..."
+                $bSuccess = $true
+            } 
 			else 
 			{
-				throw "ERROR, broker $Broker is not reachable via WinRM!"
-			}
-		}
-	}
+                throw "ERROR, broker $Broker is not reachable via WinRM!"
+            }
+        }
+    } 
 	catch 
 	{
-		$bSuccess = $false
-		$StatusMessage = $_.Exception.Message
-	}
-	
-	foreach ($item in $SessionHash.Values)
-	{
-		$SessionList += $item
-	}
-	$SessionList = $SessionList | Sort UserUPN
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;SessionList=$SessionList})
-	return $ReturnObject
+        $bSuccess = $false
+        $StatusMessage = $_.Exception.Message
+    }
+    
+    $SessionList = $SessionHash.Values | Sort-Object UserUPN
+    [PSCustomObject]@{
+        Success     = $bSuccess
+        Message     = $StatusMessage
+        SessionList = $SessionList
+    }
 }
+
+
+
 
 
 function Stop-EitAllBrokerSessionOnMachine {
