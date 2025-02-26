@@ -29,7 +29,7 @@ function Get-EitCitrixCVADMe
 			the customerId (CitrixOnPremises)
 			
 		.PARAMETER DDC
-			the DDC, aka Broker
+			the delivery controller (aka broker) for the request
 			
 		.EXAMPLE
 			Get-EitCitrixCVADMe -bearerToken MybearerToken 
@@ -53,22 +53,27 @@ function Get-EitCitrixCVADMe
 	$response = ""
 	try 
 	{
-		$requestUri = [string]::Format("https://$DDC/cvad/manage/me")
+		$requestUri = "https://$DDC/cvad/manage/me"
 
 		$headers = @{
 			"Accept" = "application/json";
 			"Authorization" = "CWSAuth Bearer=$bearerToken";
-			"Citrix-CustomerId" = $customerid;
+			"Citrix-CustomerId" = $customerId;
 		}
-		$response = Invoke-RestMethod -Uri $requestUri -Method GET -Headers $headers -ContentType "application/json" -UseBasicParsing -ErrorAction Stop
+		# Invoke REST API
+		$responseData = Invoke-RestMethod -Uri $requestUri -Method GET -Headers $headers -ContentType "application/json" -UseBasicParsing -ErrorAction Stop
 	}
 	catch 
 	{
 		$bSuccess = $false
-		$StatusMessage = $_.Exception.Message
+		$StatusMessage = "Error: $($_.Exception.Message)"
 	}
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;MyInfo=$response})
-	return $ReturnObject	
+	# Return structured output
+    [pscustomobject]@{
+        Success = $bSuccess
+        Message = $StatusMessage
+        MyInfo  = $responseData
+    }	
 }
 
 function Get-EitCitrixCVADSessionsInSite 
@@ -89,7 +94,7 @@ function Get-EitCitrixCVADSessionsInSite
 			the siteId			
 			
 		.PARAMETER DDC
-			the DDC
+			the delivery controller (aka broker) for the request
 			
 		.EXAMPLE
 			Get-EitCitrixCVADSessionsInSite -DDC myBroker -bearerToken MybearerToken -siteId MySiteID
@@ -105,9 +110,9 @@ function Get-EitCitrixCVADSessionsInSite
 	#>		
     param (
 		[Parameter(Mandatory=$true)]  [string] $DDC,
-		[Parameter(Mandatory=$true)]  [string] $siteid,
+		[Parameter(Mandatory=$true)]  [string] $siteId,
         [Parameter(Mandatory=$true)]  [string] $bearerToken,
-        [Parameter(Mandatory=$false)] [string] $customerid = "CitrixOnPremises"
+        [Parameter(Mandatory=$false)] [string] $customerId = "CitrixOnPremises"
     )
 
     $bSuccess = $true
@@ -115,7 +120,9 @@ function Get-EitCitrixCVADSessionsInSite
 	$response = ""
 	try 
 	{
-		$SessionsData = Get-EitCitrixDaasSessionsInSite -customerId $customerid -bearerToken $bearerToken -siteId $siteid -endpoint "https://$DDC"
+		$SessionsData = Get-EitCitrixDaasSessionsInSite -customerId $customerId -bearerToken $bearerToken -siteId $siteId -endpoint "https://$DDC"
+		
+		# Ensure the function call was successful
 		if ($SessionsData.Success -ne "True")
 		{
 			throw $SessionsData.Message
@@ -125,9 +132,14 @@ function Get-EitCitrixCVADSessionsInSite
 	{
 		$bSuccess = $false
 		$StatusMessage = $_.Exception.Message
+		$SessionsData = @{ Sessions = @() }  
 	}
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;Sessions=$SessionsData.Sessions})
-	return $ReturnObject
+	# Return structured output
+    [pscustomobject]@{
+        Success  = $bSuccess
+        Message  = $StatusMessage
+        Sessions = $SessionsData.Sessions
+    }
 }
 
 
@@ -151,7 +163,7 @@ function Get-EitCitrixCVADSMachinesInSite
 			the siteId			
 			
 		.PARAMETER DDC
-			the DDC, aka Broker
+			the delivery controller (aka broker) for the request
 		
 		.EXAMPLE
 			Get-EitCitrixCVADMachinesInSite -DDC myDDC -bearerToken myBearerToken -siteId MySiteID
@@ -167,9 +179,9 @@ function Get-EitCitrixCVADSMachinesInSite
 	#>		
     param (
 		[Parameter(Mandatory=$true)]  [string] $DDC,
-		[Parameter(Mandatory=$true)]  [string] $siteid,
+		[Parameter(Mandatory=$true)]  [string] $siteId,
         [Parameter(Mandatory=$true)]  [string] $bearerToken,
-        [Parameter(Mandatory=$false)] [string] $customerid = "CitrixOnPremises"
+        [Parameter(Mandatory=$false)] [string] $customerId = "CitrixOnPremises"
     )
     
 	$bSuccess = $true
@@ -177,10 +189,13 @@ function Get-EitCitrixCVADSMachinesInSite
 	$response = ""
 	try 
 	{	
-		$MachinesData = Get-EitCitrixDaaSMachinesSite -customerId $customerid -bearerToken $bearerToken -siteId $siteid -endpoint "https://$DDC"
+		$MachinesData = Get-EitCitrixDaaSMachinesInSite -customerId $customerId -bearerToken $bearerToken -siteId $siteId -endpoint "https://$DDC"
+		
+		# Ensure the function call was successful
 		if ($MachinesData.Success -ne "True")
 		{
-			throw $MachinesData.Message
+			$StatusMessage = "Error: $($_.Exception.Message)"
+			$MachinesData = @{ Machines = @() }
 		}	
     }
 	catch 
@@ -188,8 +203,12 @@ function Get-EitCitrixCVADSMachinesInSite
 		$bSuccess = $false
 		$StatusMessage = $_.Exception.Message
 	}
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;Machines=$MachinesData.Machines})
-	return $ReturnObject
+	# Return structured output
+    [pscustomobject]@{
+        Success  = $bSuccess
+        Message  = $StatusMessage
+        Machines = $MachinesData.Machines
+    }
 }
 
 
@@ -207,10 +226,10 @@ function Get-EitCitrixCVADbearerToken
 			see https://developer-docs.citrix.com/en-us/citrix-virtual-apps-desktops/citrix-cvad-rest-apis/citrix-virtual-apps-and-desktops-apis#prerequisites for more information
 			
 		.PARAMETER DDC
-			the DDC, aka Broker
+			the delivery controller (aka broker) for the request
 			
 		.EXAMPLE
-			Get-EitCitrixCVADbearerToken -DDC myDDC -Credential MyCredentials
+			Get-EitCitrixCVADbearerToken -DDC myDDC -EncodedAdminCredential myEncodedAdminCredential
 			
 		.NOTES  
 			Copyright	: 	(c)2025 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
@@ -264,14 +283,134 @@ function Get-EitCitrixCVADbearerToken
 		
 		$response = Invoke-WebRequest -Uri $tokenUrl -Method POST -Headers $Headers -UseBasicParsing -ErrorAction Stop
 		
-		$content  = $response.Content | ConvertFrom-Json
-		$bearerToken = $content.token
+		$responseJson = $response.Content | ConvertFrom-Json
+        $bearerToken = $responseJson.token
 	}
 	catch 
 	{
 		$bSuccess = $false
-		$StatusMessage = $_.Exception.Message
+		$StatusMessage = "Error: $($_.Exception.Message)"
 	}
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;bearerToken=$bearerToken})
-	return $ReturnObject	
+	# Return structured output
+    [pscustomobject]@{
+        Success     = $bSuccess
+        Message     = $StatusMessage
+        BearerToken = $bearerToken
+    }
+}
+
+
+function Get-EitCitrixCVADSessions 
+{
+	<#
+		.SYNOPSIS
+			Get a list of all Citrix sessions via the CVAD API on multiple delivery controllers.
+			
+		.DESCRIPTION
+			Get a list of all Citrix sessions via the CVAD API on multiple delivery controllers.
+		
+		.PARAMETER DDC
+			The list of delivery controllers (aka brokers)
+			
+		.PARAMETER EncodedAdminCredential
+			the Encoded Admin Credentials 
+			see https://developer-docs.citrix.com/en-us/citrix-virtual-apps-desktops/citrix-cvad-rest-apis/citrix-virtual-apps-and-desktops-apis#prerequisites for more information
+			
+			
+		.EXAMPLE
+			Get-EitCitrixCVADSessions  -DDC myDDC1, myDDC2 -EncodedAdminCredential myEncodedAdminCredential
+			
+		.NOTES  
+			Copyright	: 	(c)2025 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.0
+			
+			History:
+				V1.0 - 24.02.2025 - M.Trojahn - Initial creation
+				
+	#>
+	Param (
+        [Parameter(Mandatory = $true)]  [string[]]$DDC,
+		[Parameter(Mandatory = $true)] [string]$EncodedAdminCredential
+		
+    )
+	
+	
+	$SessionList = @()
+    $SessionHash = @{}
+    $bSuccess = $false
+    $StatusMessage = "Error while reading session list!"
+    
+    function Make-EITSBrokerSessionData {
+        Param (
+            [string]$UserName,
+            [string]$MachineName,
+            [string]$SessionState,
+            [string]$UserUPN,
+            [string]$Uid
+        )
+        [PSCustomObject]@{
+            UserName     = $UserName
+            UserUPN      = $UserUPN
+            Uid          = $Uid
+            MachineName  = $MachineName
+            SessionState = $SessionState
+        }
+    }
+	
+	try {
+        foreach ($Broker in $Brokers) {
+            if (-not (Test-EitPort -server $Broker -port 443 -timeout 1000)) 
+			{
+                Write-Warning "ERROR: Broker $Broker is not reachable via HTTPS!"
+                continue
+            }
+				
+			$myAccessToken = Get-EitCitrixCVADbearerToken -DDC $Broker -EncodedAdminCredential $EncodedAdminCredential
+			if ($myAccessToken.Success -eq "true")
+			{
+				$MyInfo = Get-EitCitrixCVADMe -DDC $Broker -bearerToken $myAccessToken.bearerToken
+				if ($MyInfo.Success -eq "true")
+				{
+					$SessionsData = Get-EitCitrixCVADSessionsInSite -DDC $Broker -bearerToken $myAccessToken.bearerToken -siteid $MyInfo.MyInfo.Customers.Sites.Id
+					if ($SessionsData.Success -eq "true")
+					{
+						foreach ($Session in $SessionsData.Sessions) 
+						{
+							$EITSBrokerSessionData = Make-EITSBrokerSessionData -UserName $Session.User.Name -MachineName $Session.Machine.Name -SessionState $Session.State -Uid $Session.Uid -UserUPN $Session.User.PrincipalName
+							if (-not $SessionHash.ContainsKey($EITSBrokerSessionData.Uid)) 
+							{
+								$SessionHash[$EITSBrokerSessionData.Uid] = $EITSBrokerSessionData
+							}
+						}
+						$StatusMessage = "Successfully read session list..."
+						$bSuccess = $true
+					} 
+					else
+					{
+						throw $SessionsData.Message
+					}
+				} 
+				else
+				{
+					throw $MyInfo.Message
+				} 
+			} 
+			else
+			{
+				throw $myAccessToken.Message
+			}
+        }
+    } 
+	catch 
+	{
+        $bSuccess = $false
+        $StatusMessage = $_.Exception.Message
+    }
+    
+    $SessionList = $SessionHash.Values | Sort-Object UserUPN
+    [PSCustomObject]@{
+        Success     = $bSuccess
+        Message     = $StatusMessage
+        SessionList = $SessionList
+    }
 }
