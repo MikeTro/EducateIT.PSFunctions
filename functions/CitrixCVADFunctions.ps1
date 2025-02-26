@@ -60,8 +60,16 @@ function Get-EitCitrixCVADMe
 			"Authorization" = "CWSAuth Bearer=$bearerToken";
 			"Citrix-CustomerId" = $customerId;
 		}
-		# Invoke REST API
-		$responseData = Invoke-RestMethod -Uri $requestUri -Method GET -Headers $headers -ContentType "application/json" -UseBasicParsing -ErrorAction Stop
+		
+		if (Test-EitPort -server $DDC -port 443 -timeout 1000) 
+		{
+			# Invoke REST API
+			$responseData = Invoke-RestMethod -Uri $requestUri -Method GET -Headers $headers -ContentType "application/json" -UseBasicParsing -ErrorAction Stop
+		}
+		else
+		{
+			throw "DDC $DDC is not reachable via HTTPS!"
+		}
 	}
 	catch 
 	{
@@ -120,7 +128,15 @@ function Get-EitCitrixCVADSessionsInSite
 	$response = ""
 	try 
 	{
-		$SessionsData = Get-EitCitrixDaasSessionsInSite -customerId $customerId -bearerToken $bearerToken -siteId $siteId -endpoint "https://$DDC"
+		
+		if (Test-EitPort -server $DDC -port 443 -timeout 1000) 
+		{
+			$SessionsData = Get-EitCitrixDaasSessionsInSite -customerId $customerId -bearerToken $bearerToken -siteId $siteId -endpoint "https://$DDC"
+		}
+		else
+		{
+			throw "DDC $DDC is not reachable via HTTPS!"
+		}
 		
 		# Ensure the function call was successful
 		if ($SessionsData.Success -ne "True")
@@ -189,8 +205,15 @@ function Get-EitCitrixCVADSMachinesInSite
 	$response = ""
 	try 
 	{	
-		$MachinesData = Get-EitCitrixDaaSMachinesInSite -customerId $customerId -bearerToken $bearerToken -siteId $siteId -endpoint "https://$DDC"
-		
+		if (Test-EitPort -server $DDC -port 443 -timeout 1000) 
+		{
+			$MachinesData = Get-EitCitrixDaaSMachinesInSite -customerId $customerId -bearerToken $bearerToken -siteId $siteId -endpoint "https://$DDC"
+		}
+		else
+		{
+			throw "DDC $DDC is not reachable via HTTPS!"
+		}
+	
 		# Ensure the function call was successful
 		if ($MachinesData.Success -ne "True")
 		{
@@ -281,10 +304,16 @@ function Get-EitCitrixCVADbearerToken
 			Authorization = "Basic $EncodedAdminCredential"
 		}
 		
-		$response = Invoke-WebRequest -Uri $tokenUrl -Method POST -Headers $Headers -UseBasicParsing -ErrorAction Stop
-		
-		$responseJson = $response.Content | ConvertFrom-Json
-        $bearerToken = $responseJson.token
+		if (Test-EitPort -server $DDC -port 443 -timeout 1000) 
+		{
+			$response = Invoke-WebRequest -Uri $tokenUrl -Method POST -Headers $Headers -UseBasicParsing -ErrorAction Stop
+			$responseJson = $response.Content | ConvertFrom-Json
+			$bearerToken = $responseJson.token
+		}
+		else
+		{
+			throw "DDC $DDC is not reachable via HTTPS!"
+		}
 	}
 	catch 
 	{
@@ -309,7 +338,7 @@ function Get-EitCitrixCVADSessions
 		.DESCRIPTION
 			Get a list of all Citrix sessions via the CVAD API on multiple delivery controllers.
 		
-		.PARAMETER DDC
+		.PARAMETER DDCs
 			The list of delivery controllers (aka brokers)
 			
 		.PARAMETER EncodedAdminCredential
@@ -318,7 +347,7 @@ function Get-EitCitrixCVADSessions
 			
 			
 		.EXAMPLE
-			Get-EitCitrixCVADSessions  -DDC myDDC1, myDDC2 -EncodedAdminCredential myEncodedAdminCredential
+			Get-EitCitrixCVADSessions  -DDCs myDDC1, myDDC2 -EncodedAdminCredential myEncodedAdminCredential
 			
 		.NOTES  
 			Copyright	: 	(c)2025 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
@@ -329,7 +358,7 @@ function Get-EitCitrixCVADSessions
 				
 	#>
 	Param (
-        [Parameter(Mandatory = $true)]  [string[]]$DDC,
+        [Parameter(Mandatory = $true)]  [string[]]$DDCs,
 		[Parameter(Mandatory = $true)] [string]$EncodedAdminCredential
 		
     )
@@ -358,20 +387,20 @@ function Get-EitCitrixCVADSessions
     }
 	
 	try {
-        foreach ($Broker in $Brokers) {
-            if (-not (Test-EitPort -server $Broker -port 443 -timeout 1000)) 
+        foreach ($DDC in $DDCs) {
+            if (-not (Test-EitPort -server $DDC -port 443 -timeout 1000)) 
 			{
-                Write-Warning "ERROR: Broker $Broker is not reachable via HTTPS!"
+                Write-Warning "ERROR: DDC $DDC is not reachable via HTTPS!"
                 continue
             }
 				
-			$myAccessToken = Get-EitCitrixCVADbearerToken -DDC $Broker -EncodedAdminCredential $EncodedAdminCredential
+			$myAccessToken = Get-EitCitrixCVADbearerToken -DDC $DDC -EncodedAdminCredential $EncodedAdminCredential
 			if ($myAccessToken.Success -eq "true")
 			{
-				$MyInfo = Get-EitCitrixCVADMe -DDC $Broker -bearerToken $myAccessToken.bearerToken
+				$MyInfo = Get-EitCitrixCVADMe -DDC $DDC -bearerToken $myAccessToken.bearerToken
 				if ($MyInfo.Success -eq "true")
 				{
-					$SessionsData = Get-EitCitrixCVADSessionsInSite -DDC $Broker -bearerToken $myAccessToken.bearerToken -siteid $MyInfo.MyInfo.Customers.Sites.Id
+					$SessionsData = Get-EitCitrixCVADSessionsInSite -DDC $DDC -bearerToken $myAccessToken.bearerToken -siteid $MyInfo.MyInfo.Customers.Sites.Id
 					if ($SessionsData.Success -eq "true")
 					{
 						foreach ($Session in $SessionsData.Sessions) 
