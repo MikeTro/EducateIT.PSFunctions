@@ -2,13 +2,13 @@
 # CitrixCVADFunctions.ps1
 # ===========================================================================
 # (c)2025 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.0
+# Version 1.1
 #
 # Citrix CVAD  (Citrix Virtual Apps and Desktops REST API) functions for Raptor Scripts
 #
 # History:
 #   V1.0 - 24.02.2005 - M.Trojahn - Initial creation, add Get-EitCitrixCVADMe, Get-EitCitrixCVADSessionsInSite, Get-EitCitrixCVADSMachinesInSite, Get-EitCitrixCVADbearerToken
-#									
+#	V1.1 - 06.03.2005 - M.Trojahn - Add UserName & MachineName parameter in function Get-EitCitrixCVADSessions 			
 #
 #
 # ===========================================================================
@@ -345,21 +345,30 @@ function Get-EitCitrixCVADSessions
 			the Encoded Admin Credentials 
 			see https://developer-docs.citrix.com/en-us/citrix-virtual-apps-desktops/citrix-cvad-rest-apis/citrix-virtual-apps-and-desktops-apis#prerequisites for more information
 			
+		.PARAMETER MachineName
+			The machine name(s) to filter sessions
 			
+		.PARAMETER UserName
+			The user name(s) to filter sessions		
+
+				
 		.EXAMPLE
 			Get-EitCitrixCVADSessions  -DDCs myDDC1, myDDC2 -EncodedAdminCredential myEncodedAdminCredential
 			
 		.NOTES  
 			Copyright	: 	(c)2025 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Version		:	1.1
 			
 			History:
 				V1.0 - 24.02.2025 - M.Trojahn - Initial creation
+				V1.1 - 06.03.2025 - M.Trojahn - Add UserName & MachineName parameter
 				
 	#>
 	Param (
         [Parameter(Mandatory = $true)]  [string[]]$DDCs,
-		[Parameter(Mandatory = $true)] [string]$EncodedAdminCredential
+		[Parameter(Mandatory = $true)] [string]$EncodedAdminCredential,
+		[Parameter(Mandatory = $false)] [string[]]$MachineName,
+        [Parameter(Mandatory = $false)] [string[]]$UserName
 		
     )
 	
@@ -369,7 +378,7 @@ function Get-EitCitrixCVADSessions
     $bSuccess = $false
     $StatusMessage = "Error while reading session list!"
     
-    function Make-EITSBrokerSessionData {
+    function Make-EitSessionData {
         Param (
             [string]$UserName,
             [string]$MachineName,
@@ -405,10 +414,10 @@ function Get-EitCitrixCVADSessions
 					{
 						foreach ($Session in $SessionsData.Sessions) 
 						{
-							$EITSBrokerSessionData = Make-EITSBrokerSessionData -UserName $Session.User.Name -MachineName $Session.Machine.Name -SessionState $Session.State -Uid $Session.Uid -UserUPN $Session.User.PrincipalName
-							if (-not $SessionHash.ContainsKey($EITSBrokerSessionData.Uid)) 
+							$EitSessionData = Make-EitSessionData -UserName $Session.User.Name -MachineName $Session.Machine.Name -SessionState $Session.State -Uid $Session.Uid -UserUPN $Session.User.PrincipalName
+							if (-not $SessionHash.ContainsKey($EitSessionData.Uid)) 
 							{
-								$SessionHash[$EITSBrokerSessionData.Uid] = $EITSBrokerSessionData
+								$SessionHash[$EitSessionData.Uid] = $EitSessionData
 							}
 						}
 						$StatusMessage = "Successfully read session list..."
@@ -436,7 +445,11 @@ function Get-EitCitrixCVADSessions
         $StatusMessage = $_.Exception.Message
     }
     
-    $SessionList = $SessionHash.Values | Sort-Object UserUPN
+	$SessionList = $SessionHash.Values | Sort-Object UserUPN
+	$SessionList = $SessionList | Where-Object {
+		(-not $MachineName -or $_.MachineName -in $MachineName) -and
+		(-not $UserName -or $_.UserName -in $UserName)
+	} | Select-Object UserName, Uid, UserUPN, MachineName, SessionState
     [PSCustomObject]@{
         Success     = $bSuccess
         Message     = $StatusMessage
