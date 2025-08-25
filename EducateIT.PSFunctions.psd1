@@ -52,6 +52,7 @@
 #			V2.2.4  - 25.02.2025 - M. Trojahn - add CitrixCVADFunctions.ps1, adds Get-EitCitrixCVADMe, Get-EitCitrixCVADSessionsInSite, Get-EitCitrixCVADSMachinesInSite, Get-EitCitrixCVADbearerToken
 #												optimize Get-EitBrokerSessions in CitrixFunctions.ps1
 #			V2.2.5 	- 06.03.2005 - M. Trojahn - Add UserName & MachineName parameter in function Get-EitCitrixCVADSessions in CitrixCVADFunctions.ps1		
+#			V2.2.5.1 	- 18.08.2005 - M. Trojahn - adding Force Parameter in Remove-EitAzUserSession in MSAvDFunctions.ps1
 #
 ###############################################################################################
 
@@ -61,7 +62,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '2.2.5'
+ModuleVersion = '2.2.5.1'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()

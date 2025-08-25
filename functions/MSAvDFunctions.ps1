@@ -1,8 +1,8 @@
 #
 # MSAvDFunctions.ps1
 # ===========================================================================
-# (c)2024 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.0
+# (c)2025 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
+# Version 1.1
 #
 # Microsoft AvD functions for Raptor Scripts
 #
@@ -11,6 +11,8 @@
 #									add Get-EitAzBearerToken, Get-EitAzHostPoolsBySubscription, 
 #									Get-EitAzSessionHostsByHostPool, Get-EitAzUserSessionsByHostPool, Send-EitAzUserMessage, 
 #									Disconnect-EitAzUserSession, Remove-EitAzUserSession, Get-EitAzUserSession
+#	V1.1 - 18.08.2025 - M.Trojahn - adding Force Parameter in Remove-EitAzUserSession
+#
 #
 #
 # ===========================================================================
@@ -450,7 +452,7 @@ function Remove-EitAzUserSession {
 		.PARAMETER SessionId
 			a valid Azure session id	
 			
-		.PARAMETER SessionId
+		.PARAMETER Force
 			use the force command	
 			
 		.EXAMPLE
