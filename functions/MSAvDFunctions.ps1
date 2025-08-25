@@ -450,15 +450,19 @@ function Remove-EitAzUserSession {
 		.PARAMETER SessionId
 			a valid Azure session id	
 			
+		.PARAMETER SessionId
+			use the force command	
+			
 		.EXAMPLE
 			Remove-EitAzUserSession -BearerToken MyBearerToken -SessionId MySessionId
 			
 		.NOTES  
-			Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Copyright: (c)2025 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.1
 			
 			History:
 				V1.0 - 03.09.2024 - M.Trojahn - Initial creation
+				V1.1 - 18.08.2025 - M.Trojahn - adding Force Parameter
 				
 	#>	
 	param(
@@ -466,6 +470,7 @@ function Remove-EitAzUserSession {
 		[string]$BearerToken,
 		[Parameter(Mandatory=$true)]
 		[string]$SessionID,
+		[switch]$Force,
 		[Parameter(Mandatory = $false)]
 		[string]$contentType = 'application/json',
 		[Parameter(Mandatory = $false)]
@@ -476,7 +481,7 @@ function Remove-EitAzUserSession {
 		[string]$APIVersion = '?api-version=2024-04-03'
 	)
 	$bSuccess = $true
-	$StatusMessage = "Successfuly logged of user!"
+	
 	$response = ""
 	try 
 	{
@@ -490,8 +495,18 @@ function Remove-EitAzUserSession {
 		$HostPoolName = $($SessionID.Split("/")[8])
 		$SessionHostName = $($SessionID.Split("/")[10])
 		$SessionIdNumber = $($SessionID.Split("/")[12])
-
-		$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIDNumber$APIVersion"
+		
+		if ($Force -eq $true) 
+		{
+			$StatusMessage = "The user was successfully forced to log out!"
+			$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIDNumber$APIVersion&force={force}"
+		}
+		else
+		{
+			$StatusMessage = "User successfully logged off!"
+			$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIDNumber$APIVersion"
+		}
+		
 		$response = Invoke-WebRequest -Uri $Uri -Headers $header -Method 'DELETE' -UseBasicParsing
 	}
 	catch
