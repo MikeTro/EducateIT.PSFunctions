@@ -501,14 +501,13 @@ function Remove-EitAzUserSession {
 		if ($Force -eq $true) 
 		{
 			$StatusMessage = "The user was successfully forced to log out!"
-			$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIDNumber$APIVersion&force={force}"
+			$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIDNumber$APIVersion&force=$Force"
 		}
 		else
 		{
 			$StatusMessage = "User successfully logged off!"
 			$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIDNumber$APIVersion"
 		}
-		
 		$response = Invoke-WebRequest -Uri $Uri -Headers $header -Method 'DELETE' -UseBasicParsing
 	}
 	catch
