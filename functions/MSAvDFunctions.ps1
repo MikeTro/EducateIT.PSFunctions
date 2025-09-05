@@ -17,580 +17,828 @@
 #
 # ===========================================================================
 
-
-
-function Get-EitAzBearerToken {
-<#
+function Get-EitAzBearerToken
+{
+    <#
 		.SYNOPSIS
-			Get a Azure Bearer token
-		
+			Get an Azure Bearer token
+
 		.DESCRIPTION
-			Retrieve the Azure Bearer Token for an authentication session
-		
+			Retrieves the Azure Bearer Token for an authentication session.
+
 		.PARAMETER AppId
-			the AppId of the Azure service principal
-			
+			The AppId of the Azure service principal
+
 		.PARAMETER AppSecret
-			the AppSecret of the Azure service principal	
-			
+			The AppSecret of the Azure service principal	
+
 		.PARAMETER TenantId
-			the id of the Azure tennant	
-			
+			The ID of the Azure tenant	
+
 		.EXAMPLE
 			Get-EitAzBearerToken -AppId MyAppID -AppSecret MyAppSecret -TenantId MyTenantId
-			
-		.NOTES  
-			Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
-			
-			History:
-				V1.0 - 03.09.2024 - M.Trojahn - Initial creation
-				
-	#>
-	param(
-		[Parameter(Mandatory=$true)] 
-		[string] $AppID,
-		[Parameter(Mandatory=$true)]
-		[string] $AppSecret,
-		[Parameter(Mandatory=$true)]
-		[string] $TenantID,
-		[Parameter(Mandatory=$false)]
-		[string] $baseURL = 'https://management.azure.com'
-	)
-	$bSuccess = $true
-	$StatusMessage = "Successfuly got bearerToken!"
-	$response = ""
-	$bearerToken = ""
-    try {
-		## https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-client-creds-grant-flow
-		[string]$Uri = "https://login.microsoftonline.com/$TenantID/oauth2/v2.0/token"
 
-		[hashtable]$Body = @{
-			grant_type    = 'client_credentials'
-			client_Id     = $AppId
-			client_Secret = $AppSecret
-			scope         = "$baseURL/.default"
-		}
-
-		$response = Invoke-RestMethod -URI $Uri -Body $Body -Method 'POST' -ContentType 'application/x-www-form-urlencoded'  -UseBasicParsing -ErrorAction SilentlyContinue
-		$bearerToken = $response | Select-Object -ExpandProperty access_token
-	}
-	catch 
-	{
-		$bSuccess = $false
-		$StatusMessage = $_.Exception.Message
-	}
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;bearerToken=$bearerToken})
-	return $ReturnObject	
-}
-
-function Get-EitAzHostPoolsBySubscription {
-<#
-		.SYNOPSIS
-			Get Azure hostpools by azure subscription
-		
-		.DESCRIPTION
-			Get Azure hostpools by azure subscription
-		
-		.PARAMETER BearerToken
-			a Azure BearerToken created by Get-EitAzBearerToken
-			
-		.PARAMETER Subscription
-			a valid Azure subscription	
-			
-		.EXAMPLE
-			Get-EitAzHostPoolsBySubscription -BearerToken MyBearerToken -Subscription MySubscription
-			
-		.NOTES  
-			Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
-			
-			History:
-				V1.0 - 03.09.2024 - M.Trojahn - Initial creation
-				
-	#>	
-	param(
-	[Parameter(Mandatory=$true)]
-		[string]$BearerToken,
-		[Parameter(Mandatory=$true)]
-		[string]$Subscription,
-		[Parameter(Mandatory = $false)]
-		[string]$contentType = 'application/json',
-		[Parameter(Mandatory = $false)]
-		[string][string]$AzBaseURL = "https://management.azure.com",
-		[Parameter(Mandatory = $false)]
-		[string]$Provider = 'Microsoft.DesktopVirtualization',
-		[Parameter(Mandatory = $false)]
-		[string]$APIVersion = '?api-version=2024-04-03'
-	)
-	$bSuccess = $true
-	$StatusMessage = "Successfuly got hostpools!"
-	$result = ""
-	try
-	{
-		[hashtable]$header = @{
-			'Authorization' = "Bearer $BearerToken"
-		}
-		$header.Add('Content-Type',$contentType )
-		$Uri = "$AzBaseURL/subscriptions/$Subscription/providers/$Provider/hostPools$APIVersion"; 
-
-		$result = Invoke-WebRequest -Uri $Uri -Headers $header -UseBasicParsing
-		$HostPools = $($result.content | ConvertFrom-Json).value
-	}
-	catch 
-	{
-		$bSuccess = $false
-		$StatusMessage = $_.Exception.Message
-	}
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;HostPools=$HostPools})
-	return $ReturnObject
-}
-
-function Get-EitAzSessionHostsByHostPool {
-	<#
-		.SYNOPSIS
-			Get Azure SessionHosts by HostPool
-		
-		.DESCRIPTION
-			Get Azure SessionHosts by HostPool
-		
-		.PARAMETER BearerToken
-			a Azure BearerToken created by Get-EitAzBearerToken
-			
-		.PARAMETER Subscription
-			a valid Azure subscription	
-			
-		.PARAMETER $HostPoolId
-			a valid Azure HostPoolId
-			
-		.EXAMPLE
-			Get-EitAzSessionHostsByHostPool -BearerToken MyBearerToken -Subscription MySubscription -HostPoolId MyHostPoolId
-			
-		.NOTES  
-			Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
-			
-			History:
-				V1.0 - 03.09.2024 - M.Trojahn - Initial creation
-				
-	#>	
-	param(
-		[Parameter(Mandatory=$true)]
-		[string]$BearerToken,
-		[Parameter(Mandatory=$true)]
-		[string]$Subscription,
-		[Parameter(Mandatory=$true)]
-		[string]$HostPoolId,
-		[Parameter(Mandatory = $false)]
-		[string]$contentType = 'application/json',
-		[Parameter(Mandatory = $false)]
-		[string][string]$AzBaseURL = "https://management.azure.com",
-		[Parameter(Mandatory = $false)]
-		[string]$Provider = 'Microsoft.DesktopVirtualization',
-		[Parameter(Mandatory = $false)]
-		[string]$APIVersion = '?api-version=2024-04-03'
-	)
-	$bSuccess = $true
-	$StatusMessage = "Successfuly got SessionHosts!"
-	$result = ""
-	try
-	{
-
-		[hashtable]$header = @{
-			'Authorization' = "Bearer $BearerToken"
-		}
-		$header.Add('Content-Type', $contentType )
-
-		$ResourceGroupName = $($HostPoolId.Split("/")[4])
-		$HostPoolName = $($HostPoolId.Split("/")[8])
-
-		$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts$APIVersion"
-		$result = Invoke-WebRequest -Uri $Uri -Headers $header -UseBasicParsing
-		$SessionHosts = $($result.content | ConvertFrom-Json).value
-	}
-	catch 
-	{
-		$bSuccess = $false
-		$StatusMessage = $_.Exception.Message
-	}
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;SessionHosts=$SessionHosts})
-	return $ReturnObject	
-}
-
-function Get-EitAzUserSessionsByHostPool {
-	<#
-		.SYNOPSIS
-			Get Azure User Session by HostPool
-		
-		.DESCRIPTION
-			Get Azure User Session by HostPool
-		
-		.PARAMETER BearerToken
-			a Azure BearerToken created by Get-EitAzBearerToken
-			
-		.PARAMETER Subscription
-			a valid Azure subscription	
-			
-		.PARAMETER $HostPoolId
-			a valid Azure HostPoolId
-			
-		.EXAMPLE
-			Get-EitAzUserSessionsByHostPool -BearerToken MyBearerToken -Subscription MySubscription -HostPoolId MyHostPoolId
-			
-		.NOTES  
-			Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
-			
-			History:
-				V1.0 - 03.09.2024 - M.Trojahn - Initial creation
-				
-	#>	
-	param(
-		[Parameter(Mandatory=$true)]
-		[string]$BearerToken,
-		[Parameter(Mandatory=$true)]
-		[string]$Subscription,
-		[Parameter(Mandatory=$true)]
-		[string]$HostPoolId,
-		[Parameter(Mandatory = $false)]
-		[string]$contentType = 'application/json',
-		[Parameter(Mandatory = $false)]
-		[string][string]$AzBaseURL = "https://management.azure.com",
-		[Parameter(Mandatory = $false)]
-		[string]$Provider = 'Microsoft.DesktopVirtualization',
-		[Parameter(Mandatory = $false)]
-		[string]$APIVersion = '?api-version=2024-04-03'
-	)
-	$bSuccess = $true
-	$StatusMessage = "Successfuly got user sessions!"
-	$result = ""
-	try
-	{
-		[hashtable]$header = @{
-			'Authorization' = "Bearer $BearerToken"
-		}
-		$header.Add('Content-Type',$contentType )
-
-		$ResourceGroupName = $($HostPoolId.Split("/")[4])
-		$HostPoolName = $($HostPoolId.Split("/")[8])
-
-		$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/userSessions$APIVersion"
-		$result = Invoke-WebRequest -Uri $Uri -Headers $header -UseBasicParsing
-		$UserSessionsByHostPool = $($result.content | ConvertFrom-Json).value
-	}
-	catch 
-	{
-		$bSuccess = $false
-		$StatusMessage = $_.Exception.Message
-	}
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;Sessions=$UserSessionsByHostPool})
-	return $ReturnObject	
-	
-}
-
-function Send-EitAzUserMessage {
-	<#
-		.SYNOPSIS
-			Send a message to an Azure User Session
-		
-		.DESCRIPTION
-			Send a message to an Azure User Session
-		
-		.PARAMETER BearerToken
-			a Azure BearerToken created by Get-EitAzBearerToken
-			
-		.PARAMETER SessionId
-			a valid Azure session id	
-			
-		.PARAMETER MessageTitle
-			the title of the message
-			
-		.PARAMETER MessageBody
-			the body of the message	
-			
-		.EXAMPLE
-			Send-EitAzUserMessage -BearerToken MyBearerToken -SessionId MySessionId -MessageTitle "A title example" -MessageBody "A example message"
-			
-		.NOTES  
-			Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
-			
-			History:
-				V1.0 - 03.09.2024 - M.Trojahn - Initial creation
-				
-	#>	
-	param(
-		[Parameter(Mandatory=$true)]
-		[string]$BearerToken,
-		[Parameter(Mandatory=$true)]
-		[string]$SessionID,
-		[Parameter(Mandatory = $true)]
-		[string] $MessageTitle,
-		[Parameter(Mandatory = $true)]
-		[string] $MessageBody,
-		[Parameter(Mandatory = $false)]
-		[string]$contentType = 'application/json',
-		[Parameter(Mandatory = $false)]
-		[string][string]$AzBaseURL = "https://management.azure.com",
-		[Parameter(Mandatory = $false)]
-		[string]$Provider = 'Microsoft.DesktopVirtualization',
-		[Parameter(Mandatory = $false)]
-		[string]$APIVersion = '?api-version=2024-04-03'
-	)
-	$bSuccess = $true
-	$StatusMessage = "Successfuly send message!"
-	$result = ""
-	try
-	{
-		[hashtable]$header = @{
-			'Authorization' = "Bearer $BearerToken"
-		}
-		$header.Add('Content-Type',$contentType )
-
-		$Subscription = $($SessionID.Split("/")[2])
-		$ResourceGroupName = $($SessionID.Split("/")[4])
-		$HostPoolName = $($SessionID.Split("/")[8])
-		$SessionHostName = $($SessionID.Split("/")[10])
-		$SessionIdNumber = $($SessionID.Split("/")[12])
-
-		$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIDNumber/sendMessage$APIVersion"
-		$Body = @{'messageBody' = $MessageBody; 'messageTitle' = $MessageTitle }
-		$JsonBody = $Body | ConvertTo-Json -Depth 20
-
-		## convertto-json converts certain characters to codes so we convert back as Azure doesn't like them
-		$JsonBody = $JsonBody  -replace '\\u003e' , '>' -replace '\\u003c' , '<' -replace '\\u0027' , '''' -replace '\\u0026' , '&'
-
-		$Result = Invoke-WebRequest -Uri $Uri -Headers $header -Method 'POST' -Body $JsonBody -UseBasicParsing
-	}
-	catch 
-	{
-		$bSuccess = $false
-		$StatusMessage = $_.Exception.Message
-	}
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;StatusCode=$Result.StatusCode})
-	return $ReturnObject	
-}
-
-function Disconnect-EitAzUserSession {
-	<#
-		.SYNOPSIS
-			Disconnect a Azure User Session
-		
-		.DESCRIPTION
-			Disconnect a Azure User Session
-		
-		.PARAMETER BearerToken
-			a Azure BearerToken created by Get-EitAzBearerToken
-			
-		.PARAMETER SessionId
-			a valid Azure session id	
-			
-		.EXAMPLE
-			Disconnect-EitAzUserSession -BearerToken MyBearerToken -SessionId MySessionId
-			
-		.NOTES  
-			Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
-			
-			History:
-				V1.0 - 03.09.2024 - M.Trojahn - Initial creation
-				
-	#>	
-	param(
-		[Parameter(Mandatory=$true)]
-		[string]$BearerToken,
-		[Parameter(Mandatory=$true)]
-		[string]$SessionID,
-		[Parameter(Mandatory = $false)]
-		[string]$contentType = 'application/json',
-		[Parameter(Mandatory = $false)]
-		[string][string]$AzBaseURL = "https://management.azure.com",
-		[Parameter(Mandatory = $false)]
-		[string]$Provider = 'Microsoft.DesktopVirtualization',
-		[Parameter(Mandatory = $false)]
-		[string]$APIVersion = '?api-version=2024-04-03'
-	)
-	$bSuccess = $true
-	$StatusMessage = "Successfuly disconnected session!"
-	$result = ""
-	try
-	{
-		[hashtable]$header = @{
-			'Authorization' = "Bearer $BearerToken"
-		}
-		$header.Add('Content-Type',$contentType )
-
-		$Subscription = $($SessionID.Split("/")[2])
-		$ResourceGroupName = $($SessionID.Split("/")[4])
-		$HostPoolName = $($SessionID.Split("/")[8])
-		$SessionHostName = $($SessionID.Split("/")[10])
-		$SessionIdNumber = $($SessionID.Split("/")[12])
-
-		$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIDNumber/disconnect$APIVersion"
-		$Result = Invoke-WebRequest -Uri $Uri -Headers $header -Method 'POST' -UseBasicParsing
-	}
-	catch 
-	{
-		$bSuccess = $false
-		$StatusMessage = $_.Exception.Message
-	}
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;StatusCode=$Result.StatusCode})
-	return $ReturnObject	
-}
-
-function Remove-EitAzUserSession {
-	<#
-		.SYNOPSIS
-			Remove (logoff) a Azure User Session
-		
-		.DESCRIPTION
-			Remove (logoff) a Azure User Session
-		
-		.PARAMETER BearerToken
-			a Azure BearerToken created by Get-EitAzBearerToken
-			
-		.PARAMETER SessionId
-			a valid Azure session id	
-			
-		.PARAMETER Force
-			use the force command	
-			
-		.EXAMPLE
-			Remove-EitAzUserSession -BearerToken MyBearerToken -SessionId MySessionId
-			
 		.NOTES  
 			Copyright: (c)2025 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
 			Version		:	1.1
 			
 			History:
 				V1.0 - 03.09.2024 - M.Trojahn - Initial creation
-				V1.1 - 18.08.2025 - M.Trojahn - adding Force Parameter
-				
-	#>	
-	param(
-		[Parameter(Mandatory=$true)]
-		[string]$BearerToken,
-		[Parameter(Mandatory=$true)]
-		[string]$SessionID,
-		[switch]$Force,
-		[Parameter(Mandatory = $false)]
-		[string]$contentType = 'application/json',
-		[Parameter(Mandatory = $false)]
-		[string][string]$AzBaseURL = "https://management.azure.com",
-		[Parameter(Mandatory = $false)]
-		[string]$Provider = 'Microsoft.DesktopVirtualization',
-		[Parameter(Mandatory = $false)]
-		[string]$APIVersion = '?api-version=2024-04-03'
-	)
-	$bSuccess = $true
-	
-	$response = ""
-	try 
-	{
-		[hashtable]$header = @{
-			'Authorization' = "Bearer $BearerToken"
-		}
-		$header.Add('Content-Type',$contentType )
+				V1.1 - 03.09.2025 - M.Trojahn - Optimized version with improvements
 
-		$Subscription = $($SessionID.Split("/")[2])
-		$ResourceGroupName = $($SessionID.Split("/")[4])
-		$HostPoolName = $($SessionID.Split("/")[8])
-		$SessionHostName = $($SessionID.Split("/")[10])
-		$SessionIdNumber = $($SessionID.Split("/")[12])
-		
-		if ($Force -eq $true) 
-		{
-			$StatusMessage = "The user was successfully forced to log out!"
-			$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIDNumber$APIVersion&force=$Force"
-		}
-		else
-		{
-			$StatusMessage = "User successfully logged off!"
-			$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIDNumber$APIVersion"
-		}
-		$response = Invoke-WebRequest -Uri $Uri -Headers $header -Method 'DELETE' -UseBasicParsing
-	}
-	catch
-	{
-		$bSuccess = $false
-		$StatusMessage = $_.Exception.Message
-	}
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;StatusCode=$response.StatusCode})
-	return $ReturnObject	
+	#>
+	
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [string] $AppId,
+
+        [Parameter(Mandatory = $true)]
+        [string] $AppSecret,
+
+        [Parameter(Mandatory = $true)]
+        [string] $TenantId,
+
+        [Parameter(Mandatory = $false)]
+        [string] $BaseUrl = 'https://management.azure.com'
+    )
+
+    $success = $true
+    $statusMessage = "Successfully retrieved bearer token."
+    $bearerToken = $null
+
+    try
+    {
+        # Ensure TLS 1.2 (older Windows defaults may lack it)
+        try
+        {
+            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
+        }
+        catch
+        {
+            # ignore if not supported
+        }
+
+        $uri = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
+
+        $body = @{
+            grant_type    = 'client_credentials'
+            client_id     = $AppId
+            client_secret = $AppSecret
+            scope         = "$BaseUrl/.default"
+        }
+
+        Write-Verbose "Sending authentication request to $uri"
+
+        $response = Invoke-RestMethod -Uri $uri -Method Post -Body $body -ContentType 'application/x-www-form-urlencoded' -UseBasicParsing -ErrorAction Stop
+
+        if ($response -and $response.access_token)
+        {
+            $bearerToken = $response.access_token
+        }
+        else
+        {
+            throw "Authentication response did not contain a bearer token."
+        }
+    }
+    catch
+    {
+        $success = $false
+        $statusMessage = "Error retrieving token: $($_.Exception.Message)"
+    }
+
+    return [pscustomobject]@{
+        Success     = $success
+        Message     = $statusMessage
+        BearerToken = $bearerToken
+    }
 }
 
-
-
-function Get-EitAzUserSession {
-	<#
+function Get-EitAzHostPoolsBySubscription
+{
+    <#
 		.SYNOPSIS
-			Get Azure User Session 
-		
+			Get Azure hostpools by azure subscription
+
 		.DESCRIPTION
-			Get Azure User Session 
-		
+			Get Azure hostpools by azure subscription
+
 		.PARAMETER BearerToken
-			a Azure BearerToken created by Get-EitAzBearerToken
-			
-		.PARAMETER SessionId
-			a valid Azure session Id
-			
-		.
-			
+			A valid Azure BearerToken created by Get-EitAzBearerToken
+
+		.PARAMETER Subscription
+			A valid Azure subscription ID
+
 		.EXAMPLE
-			Get-EitAzUserSessionsByHostPool -BearerToken MyBearerToken -SessionId /my/session/id
-			
+			Get-EitAzHostPoolsBySubscription -BearerToken MyBearerToken -Subscription MySubscription
+
 		.NOTES  
 			Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Version : 1.1
 			
 			History:
-				V1.0 - 02.09.2024 - M.Trojahn - Initial creation
-				
-	#>	
-	param(
-		[Parameter(Mandatory=$true)]
-		[string]$BearerToken,
-		[Parameter(Mandatory=$true)]
-		[string]$SessionId,
-		[Parameter(Mandatory = $false)]
-		[string]$contentType = 'application/json',
-		[Parameter(Mandatory = $false)]
-		[string][string]$AzBaseURL = "https://management.azure.com",
-		[Parameter(Mandatory = $false)]
-		[string]$Provider = 'Microsoft.DesktopVirtualization',
-		[Parameter(Mandatory = $false)]
-		[string]$APIVersion = '?api-version=2024-04-03'
-	)
-	$bSuccess = $true
-	$StatusMessage = "Successfuly got user session!"
-	$result = ""
-	$SessionState = $null
-	try
-	{
-		[hashtable]$header = @{
-			'Authorization' = "Bearer $BearerToken"
-		}
-		$header.Add('Content-Type',$contentType )
+				V1.0 - 03.09.2024 - M.Trojahn - Initial creation
+				V1.1 - 03.09.2025 - M.Trojahn - Optimized version with improvements
+	#>
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [string]$BearerToken,
 
-		
-		
-		$Subscription = $($SessionId.Split("/")[2])
-		$ResourceGroupName = $($SessionId.Split("/")[4])
-		$HostPoolName = $($SessionId.Split("/")[8])
-		$SessionHostName = $($SessionId.Split("/")[10])
-		$SessionIdNumber = $($SessionId.Split("/")[12])
+        [Parameter(Mandatory = $true)]
+        [string]$Subscription,
 
-		$Uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIdNumber$APIVersion"
-		$result = Invoke-WebRequest -Uri $Uri -Headers $header -UseBasicParsing
-		$SessionState = $($result.content | ConvertFrom-Json).properties.sessionState
-	}
-	catch 
-	{
-		$bSuccess = $false
-		$StatusMessage = $_.Exception.Message
-	}
-	$ReturnObject = ([pscustomobject]@{Success=$bSuccess;Message=$StatusMessage;SessionId=$SessionId;SessionState=$SessionState})
-	return $ReturnObject	
+        [Parameter(Mandatory = $false)]
+        [string]$ContentType = 'application/json',
+
+        [Parameter(Mandatory = $false)]
+        [string]$AzBaseURL = "https://management.azure.com",
+
+        [Parameter(Mandatory = $false)]
+        [string]$Provider = 'Microsoft.DesktopVirtualization',
+
+        [Parameter(Mandatory = $false)]
+        [string]$APIVersion = '2024-04-03'
+    )
+
+    $bSuccess      = $true
+    $StatusMessage = "Successfully retrieved hostpools."
+    $HostPools     = $null
+
+    try
+    {
+        $headers = @{
+            Authorization = "Bearer $BearerToken"
+            'Content-Type' = $ContentType
+        }
+
+        $uri = "$AzBaseURL/subscriptions/$Subscription/providers/$Provider/hostPools" + "?api-version=" + $APIVersion
+
+        $response = Invoke-WebRequest -Uri $uri -Headers $headers -UseBasicParsing -ErrorAction Stop
+
+        $HostPools = ($response.Content | ConvertFrom-Json).value
+    }
+    catch
+    {
+        $bSuccess = $false
+        $StatusMessage = $_.Exception.Message
+    }
+
+    return [pscustomobject]@{
+        Success   = $bSuccess
+        Message   = $StatusMessage
+        HostPools = $HostPools
+    }
 }
 
+function Get-EitAzSessionHostsByHostPool
+{
+    <#
+        .SYNOPSIS
+            Get Azure SessionHosts by HostPool
+        
+        .DESCRIPTION
+            Get Azure SessionHosts by HostPool
+        
+        .PARAMETER BearerToken
+            A valid Azure BearerToken created by Get-EitAzBearerToken
+            
+        .PARAMETER Subscription
+            A valid Azure subscription    
+            
+        .PARAMETER HostPoolId
+            A valid Azure HostPoolId
+            
+        .EXAMPLE
+            Get-EitAzSessionHostsByHostPool -BearerToken MyBearerToken -Subscription MySubscription -HostPoolId MyHostPoolId
+            
+        .NOTES  
+            Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+            Version     :   1.1
+            
+            History:
+                V1.0 - 03.09.2024 - M.Trojahn - Initial creation
+                V1.1 - 03.09.2025 - M.Trojahn - Optimized version with improvements
+    #>   
+	
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [string]$BearerToken,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Subscription,
+
+        [Parameter(Mandatory = $true)]
+        [string]$HostPoolId,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ContentType = 'application/json',
+
+        [Parameter(Mandatory = $false)]
+        [string]$AzBaseURL = "https://management.azure.com",
+
+        [Parameter(Mandatory = $false)]
+        [string]$Provider = 'Microsoft.DesktopVirtualization',
+
+        [Parameter(Mandatory = $false)]
+        [string]$APIVersion = '2024-04-03'
+    )
+
+    $bSuccess = $true
+    $StatusMessage = "Successfully got SessionHosts!"
+    $SessionHosts = @()
+
+    try
+    {
+        $headers = @{
+            'Authorization' = "Bearer $BearerToken"
+            'Content-Type'  = $ContentType
+        }
+
+        if ($HostPoolId -notmatch "^/subscriptions/.+/resourceGroups/.+/providers/.+/hostPools/.+$")
+        {
+            throw "Invalid HostPoolId format: $HostPoolId"
+        }
+
+        $parts = $HostPoolId -split "/"
+        $ResourceGroupName = $parts[4]
+        $HostPoolName = $parts[8]
+
+        $uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts?api-version=$APIVersion"
+
+        # WebRequest + ConvertFrom-Json for PS 5.1
+        $response = Invoke-WebRequest -Uri $uri -Headers $headers -UseBasicParsing -ErrorAction Stop
+        $SessionHosts = ($response.Content | ConvertFrom-Json).value
+    }
+    catch
+    {
+        $bSuccess = $false
+        $StatusMessage = "Error getting session hosts: $($_.Exception.Message)"
+    }
+
+    return [pscustomobject]@{
+        Success      = $bSuccess
+        Message      = $StatusMessage
+        SessionHosts = $SessionHosts
+    }
+}
+
+function Get-EitAzUserSessionsByHostPool
+{
+    <#
+        .SYNOPSIS
+            Get Azure User Sessions by HostPool
+        
+        .DESCRIPTION
+            Retrieves all user sessions for a given HostPool in Azure Virtual Desktop.
+        
+        .PARAMETER BearerToken
+            A valid Azure BearerToken created by Get-EitAzBearerToken
+            
+        .PARAMETER Subscription
+            A valid Azure subscription ID
+            
+        .PARAMETER HostPoolId
+            A valid Azure HostPoolId
+            
+        .EXAMPLE
+            Get-EitAzUserSessionsByHostPool -BearerToken MyToken -Subscription MySub -HostPoolId /subscriptions/xxx/resourceGroups/yyy/providers/Microsoft.DesktopVirtualization/hostPools/zzz
+            
+        .NOTES  
+            Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+            Version     : 1.1
+            
+            History:
+                V1.0 - 03.09.2024 - M.Trojahn - Initial creation
+                V1.1 - 03.09.2025 - M.Trojahn - Optimized version with improvements
+    #>
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [string]$BearerToken,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Subscription,
+
+        [Parameter(Mandatory = $true)]
+        [string]$HostPoolId,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ContentType = 'application/json',
+
+        [Parameter(Mandatory = $false)]
+        [string]$AzBaseURL = "https://management.azure.com",
+
+        [Parameter(Mandatory = $false)]
+        [string]$Provider = 'Microsoft.DesktopVirtualization',
+
+        [Parameter(Mandatory = $false)]
+        [string]$APIVersion = '2024-04-03'
+    )
+
+    $bSuccess = $true
+    $StatusMessage = "Successfully retrieved user sessions."
+    $UserSessionsByHostPool = @()
+
+    try
+    {
+        $headers = @{
+            'Authorization' = "Bearer $BearerToken"
+            'Content-Type'  = $ContentType
+        }
+
+        if ($HostPoolId -notmatch "^/subscriptions/.+/resourceGroups/.+/providers/.+/hostPools/.+$")
+        {
+            throw "Invalid HostPoolId format: $HostPoolId"
+        }
+
+        $parts = $HostPoolId -split "/"
+        $ResourceGroupName = $parts[4]
+        $HostPoolName = $parts[8]
+
+        $uri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/userSessions" + "?api-version=" + $APIVersion
+
+        $response = Invoke-WebRequest -Uri $uri -Headers $headers -UseBasicParsing -ErrorAction Stop
+        $UserSessionsByHostPool = ($response.Content | ConvertFrom-Json).value
+    }
+    catch
+    {
+        $bSuccess = $false
+        $StatusMessage = "Error retrieving user sessions: $($_.Exception.Message)"
+    }
+
+    return [pscustomobject]@{
+        Success  = $bSuccess
+        Message  = $StatusMessage
+        Sessions = $UserSessionsByHostPool
+    }
+}
+
+function Send-EitAzUserMessage
+{
+    <#
+        .SYNOPSIS
+            Send a message to an Azure User Session
+        
+        .DESCRIPTION
+            Sends a custom message (title and body) to a specified Azure Virtual Desktop user session.
+        
+        .PARAMETER BearerToken
+            A valid Azure BearerToken created by Get-EitAzBearerToken
+            
+        .PARAMETER SessionId
+            The full Azure resource ID of the user session
+            
+        .PARAMETER MessageTitle
+            The title of the message to send
+            
+        .PARAMETER MessageBody
+            The body content of the message
+            
+        .EXAMPLE
+            Send-EitAzUserMessage -BearerToken $token -SessionId "/subscriptions/xxx/..." -MessageTitle "Warning" -MessageBody "Please save your work."
+        
+        .NOTES
+            Copyright: (c)2024 by EducateIT GmbH
+            Version     : 1.1
+
+            History:
+                V1.0 - 03.09.2024 - M.Trojahn - Initial creation
+                V1.1 - 03.09.2025 - M.Trojahn - Optimized version with improvements
+    #>
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [string]$BearerToken,
+
+        [Parameter(Mandatory = $true)]
+        [string]$SessionId,
+
+        [Parameter(Mandatory = $true)]
+        [string]$MessageTitle,
+
+        [Parameter(Mandatory = $true)]
+        [string]$MessageBody,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ContentType = 'application/json',
+
+        [Parameter(Mandatory = $false)]
+        [string]$AzBaseURL = "https://management.azure.com",
+
+        [Parameter(Mandatory = $false)]
+        [string]$Provider = 'Microsoft.DesktopVirtualization',
+
+        [Parameter(Mandatory = $false)]
+        [string]$APIVersion = '2024-04-03'
+    )
+
+    $bSuccess = $true
+    $StatusMessage = "Successfully sent message."
+    $StatusCode = $null
+
+    try
+    {
+        $headers = @{
+            'Authorization' = "Bearer $BearerToken"
+            'Content-Type'  = $ContentType
+        }
+
+        if ($SessionId -notmatch "^/subscriptions/.+/resourceGroups/.+/providers/.+/hostPools/.+/sessionHosts/.+/userSessions/.+$")
+        {
+            throw "Invalid SessionId format: $SessionId"
+        }
+
+        $parts = $SessionId -split "/"
+        $subscriptionId   = $parts[2]
+        $resourceGroup    = $parts[4]
+        $hostPoolName     = $parts[8]
+        $sessionHostName  = $parts[10]
+        $userSessionId    = $parts[12]
+
+        $uri = "$AzBaseURL/subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/$Provider/hostPools/$hostPoolName/sessionHosts/$sessionHostName/userSessions/$userSessionId/sendMessage" + "?api-version=" + $APIVersion
+
+        $body = @{
+            messageTitle = $MessageTitle
+            messageBody  = $MessageBody
+        }
+
+        $jsonBody = $body | ConvertTo-Json -Depth 5
+
+        # Fix character encoding issues Azure doesn't like
+        $jsonBody = $jsonBody `
+            -replace '\\u003e', '>' `
+            -replace '\\u003c', '<' `
+            -replace '\\u0027', '''' `
+            -replace '\\u0026', '&'
+
+        $resp = Invoke-WebRequest -Uri $uri -Headers $headers -Method Post -Body $jsonBody -UseBasicParsing -ErrorAction Stop
+
+        $StatusCode = [int]$resp.StatusCode
+    }
+    catch
+    {
+        $bSuccess = $false
+        try
+        {
+            $StatusCode = [int]$_.Exception.Response.StatusCode
+        }
+        catch
+        {
+            # ignore
+        }
+        $StatusMessage = "Failed to send message: $($_.Exception.Message)"
+    }
+
+    return [pscustomobject]@{
+        Success     = $bSuccess
+        Message     = $StatusMessage
+        StatusCode  = $StatusCode
+    }
+}
+
+function Disconnect-EitAzUserSession
+{
+    <#
+        .SYNOPSIS
+            Disconnect an Azure User Session
+        
+        .DESCRIPTION
+            Disconnects a user session in Azure Virtual Desktop (AVD).
+        
+        .PARAMETER BearerToken
+            A valid Azure BearerToken created by Get-EitAzBearerToken
+            
+        .PARAMETER SessionId
+            The full Azure resource ID of the user session to disconnect
+            (/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DesktopVirtualization/hostPools/{hp}/sessionHosts/{sh}/userSessions/{id})
+            
+        .EXAMPLE
+            Disconnect-EitAzUserSession -BearerToken $token -SessionId "/subscriptions/xxx/resourceGroups/rg/providers/Microsoft.DesktopVirtualization/hostPools/hp/sessionHosts/sh.domain.tld/userSessions/1"
+            
+        .NOTES  
+            Copyright: (c)2024 by EducateIT GmbH
+            Version     : 1.1
+            
+            History:
+                V1.0 - 03.09.2024 - M.Trojahn - Initial creation
+                V1.1 - 03.09.2025 - M.Trojahn - Optimized version with improvements
+    #>       
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [string]$BearerToken,
+
+        [Parameter(Mandatory = $true)]
+        [string]$SessionId,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ContentType = 'application/json',
+
+        [Parameter(Mandatory = $false)]
+        [string]$AzBaseURL = "https://management.azure.com",
+
+        [Parameter(Mandatory = $false)]
+        [string]$Provider = 'Microsoft.DesktopVirtualization',
+
+        [Parameter(Mandatory = $false)]
+        [string]$APIVersion = '2024-04-03'
+    )
+
+    $bSuccess = $true
+    $StatusMessage = "Successfully disconnected session."
+    $StatusCode = $null
+    $OperationLocation = $null
+
+    try
+    {
+        if ($SessionId -notmatch "^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/[^/]+/hostPools/[^/]+/sessionHosts/[^/]+/userSessions/[^/]+$")
+        {
+            throw "Invalid SessionId format: $SessionId"
+        }
+
+        $headers = @{
+            'Authorization' = "Bearer $BearerToken"
+            'Content-Type'  = $ContentType
+        }
+
+        $parts = $SessionId -split "/"
+        $subscriptionId  = $parts[2]
+        $resourceGroup   = $parts[4]
+        $hostPoolName    = $parts[8]
+        $sessionHostName = $parts[10]
+        $userSessionId   = $parts[12]
+
+        $uri = "$AzBaseURL/subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/$Provider/hostPools/$hostPoolName/sessionHosts/$sessionHostName/userSessions/$userSessionId/disconnect" + "?api-version=" + $APIVersion
+
+        $resp = Invoke-WebRequest -Uri $uri -Headers $headers -Method Post -UseBasicParsing -ErrorAction Stop
+
+        $StatusCode = [int]$resp.StatusCode
+        if ($resp.Headers -and $resp.Headers['Operation-Location'])
+        {
+            $OperationLocation = $resp.Headers['Operation-Location']
+        }
+
+        if ($StatusCode -in 200, 202, 204)
+        {
+            $bSuccess = $true
+        }
+        else
+        {
+            $bSuccess = $false
+            $StatusMessage = "Unexpected status code: $StatusCode"
+        }
+    }
+    catch
+    {
+        $bSuccess = $false
+        try
+        {
+            $StatusCode = [int]$_.Exception.Response.StatusCode
+        }
+        catch
+        {
+            # ignore
+        }
+        $StatusMessage = "Failed to disconnect session: $($_.Exception.Message)"
+    }
+
+    return [pscustomobject]@{
+        Success           = $bSuccess
+        Message           = $StatusMessage
+        StatusCode        = $StatusCode
+        OperationLocation = $OperationLocation
+        SessionId         = $SessionId
+    }
+}
+
+
+function Remove-EitAzUserSession
+{
+    <#
+		.SYNOPSIS
+			Remove (log off) an Azure User Session
+
+		.DESCRIPTION
+			Remove (log off) an Azure User Session
+
+		.PARAMETER BearerToken
+			An Azure BearerToken created by Get-EitAzBearerToken
+
+		.PARAMETER SessionId
+			A valid Azure session ID
+
+		.PARAMETER Force
+			Use the force logoff option
+
+		.EXAMPLE
+			Remove-EitAzUserSession -BearerToken MyBearerToken -SessionId MySessionId
+
+		.NOTES
+			Copyright: (c)2025 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version     : 1.2
+
+			History:
+				V1.0 - 03.09.2024 - M.Trojahn - Initial creation
+				V1.1 - 18.08.2025 - M.Trojahn - Added Force parameter
+				V1.2 - 03.09.2025 - M.Trojahn - Optimized URI building and performance
+	#>
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [string]$BearerToken,
+
+        [Parameter(Mandatory = $true)]
+        [string]$SessionID,
+
+        [switch]$Force,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ContentType = 'application/json',
+
+        [Parameter(Mandatory = $false)]
+        [string]$AzBaseURL = 'https://management.azure.com',
+
+        [Parameter(Mandatory = $false)]
+        [string]$Provider = 'Microsoft.DesktopVirtualization',
+
+        [Parameter(Mandatory = $false)]
+        [string]$APIVersion = '2024-04-03'
+    )
+
+    $bSuccess = $true
+    $response = $null
+    $StatusMessage = ""
+
+    try
+    {
+        if ($SessionID -notmatch "^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/[^/]+/hostPools/[^/]+/sessionHosts/[^/]+/userSessions/[^/]+$")
+        {
+            throw "Invalid SessionId format: $SessionID"
+        }
+
+        $header = @{
+            'Authorization' = "Bearer $BearerToken"
+            'Content-Type'  = $ContentType
+        }
+
+        $parts = $SessionID -Split "/"
+        $Subscription       = $parts[2]
+        $ResourceGroupName  = $parts[4]
+        $HostPoolName       = $parts[8]
+        $SessionHostName    = $parts[10]
+        $SessionIdNumber    = $parts[12]
+
+        $BaseUri = "$AzBaseURL/subscriptions/$Subscription/resourceGroups/$ResourceGroupName/providers/$Provider/hostPools/$HostPoolName/sessionHosts/$SessionHostName/userSessions/$SessionIdNumber"
+
+        $forceValue = if ($Force.IsPresent) { "true" } else { "false" }
+        $StatusMessage = if ($Force.IsPresent) { "The user was successfully forced to log out!" } else { "User successfully logged off!" }
+
+        $Uri = $BaseUri + "?api-version=" + $APIVersion + "&force=$forceValue"
+
+        $response = Invoke-WebRequest -Uri $Uri -Headers $header -Method Delete -UseBasicParsing -ErrorAction Stop
+    }
+    catch
+    {
+        $bSuccess = $false
+        $StatusMessage = $_.Exception.Message
+    }
+
+    $ReturnObject = [pscustomobject]@{
+        Success    = $bSuccess
+        Message    = $StatusMessage
+        StatusCode = if ($response) { $response.StatusCode } else { $null }
+        SessionID  = $SessionID
+        BaseUri    = $BaseUri
+        URI        = $Uri
+    }
+
+    return $ReturnObject
+}
+
+
+
+function Get-EitAzUserSession
+{
+    <#
+        .SYNOPSIS
+            Get Azure User Session
+        
+        .DESCRIPTION
+            Retrieves a single Azure Virtual Desktop (AVD) user session and returns its key properties, including session state.
+        
+        .PARAMETER BearerToken
+            A valid Azure BearerToken created by Get-EitAzBearerToken
+            
+        .PARAMETER SessionId
+            The full Azure resource ID of the user session
+            (/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DesktopVirtualization/hostPools/{hp}/sessionHosts/{sh}/userSessions/{id})
+        
+        .EXAMPLE
+            Get-EitAzUserSession -BearerToken $token -SessionId "/subscriptions/xxx/resourceGroups/rg/providers/Microsoft.DesktopVirtualization/hostPools/hp/sessionHosts/host.domain.tld/userSessions/1"
+        
+        .NOTES  
+            Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+            Version     : 1.1
+            
+            History:
+                V1.0 - 02.09.2024 - M.Trojahn - Initial creation
+                V1.1 - 03.09.2025 - M.Trojahn - Optimized version with improvements
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$BearerToken,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$SessionId,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ContentType = 'application/json',
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]$AzBaseURL = "https://management.azure.com",
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Provider = 'Microsoft.DesktopVirtualization',
+
+        # No leading '?'; appended below.
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]$APIVersion = '2024-04-03'
+    )
+
+    $bSuccess = $true
+    $StatusMessage = "Successfully retrieved user session."
+    $StatusCode = $null
+    $Session = $null
+    $SessionState = $null
+
+    try
+    {
+        # Validate resource ID before splitting
+        if ($SessionId -notmatch "^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/[^/]+/hostPools/[^/]+/sessionHosts/[^/]+/userSessions/[^/]+$")
+        {
+            throw "Invalid SessionId format: $SessionId"
+        }
+
+        $headers = @{
+            'Authorization' = "Bearer $BearerToken"
+            'Content-Type'  = $ContentType
+        }
+
+        $parts = $SessionId -split "/"
+        $subscriptionId  = $parts[2]
+        $resourceGroup   = $parts[4]
+        $hostPoolName    = $parts[8]
+        $sessionHostName = $parts[10]
+        $userSessionId   = $parts[12]
+
+        $uri = "$AzBaseURL/subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/$Provider/hostPools/$hostPoolName/sessionHosts/$sessionHostName/userSessions/$userSessionId" + "?api-version=" + $APIVersion
+
+        $resp = Invoke-WebRequest -Uri $uri -Headers $headers -Method Get -UseBasicParsing -ErrorAction Stop
+
+        $StatusCode = [int]$resp.StatusCode
+
+        if ($resp.Content)
+        {
+            $parsed = $resp.Content | ConvertFrom-Json
+            $Session = $parsed
+            if ($parsed.properties)
+            {
+                $SessionState = $parsed.properties.sessionState
+            }
+        }
+    }
+    catch
+    {
+        $bSuccess = $false
+        try
+        {
+            # Try to extract HTTP status code if present
+            $StatusCode = [int]$_.Exception.Response.StatusCode
+        }
+        catch
+        {
+            # ignore if not an HTTP error
+        }
+        $StatusMessage = "Failed to retrieve user session: $($_.Exception.Message)"
+    }
+
+    return [pscustomobject]@{
+        Success      = $bSuccess
+        Message      = $StatusMessage
+        StatusCode   = $StatusCode
+        SessionId    = $SessionId
+        SessionState = $SessionState
+        Session      = $Session
+    }
+}
