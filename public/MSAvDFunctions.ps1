@@ -2,7 +2,7 @@
 # MSAvDFunctions.ps1
 # ===========================================================================
 # (c)2025 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.1
+# Version 1.2
 #
 # Microsoft AvD functions for Raptor Scripts
 #
@@ -12,6 +12,7 @@
 #									Get-EitAzSessionHostsByHostPool, Get-EitAzUserSessionsByHostPool, Send-EitAzUserMessage, 
 #									Disconnect-EitAzUserSession, Remove-EitAzUserSession, Get-EitAzUserSession
 #	V1.1 - 18.08.2025 - M.Trojahn - adding Force Parameter in Remove-EitAzUserSession
+#	V1.2 - 16.09.2025 - M.Trojahn - adding funktion Get-EitAzSessionHost & Set-EitAzSessionHostAllowNewSession
 #
 #
 #
@@ -134,7 +135,7 @@ function Get-EitAzHostPoolsBySubscription
 			Get-EitAzHostPoolsBySubscription -BearerToken MyBearerToken -Subscription MySubscription
 
 		.NOTES  
-			Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Copyright: (c)2025 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
 			Version : 1.1
 			
 			History:
@@ -214,7 +215,7 @@ function Get-EitAzSessionHostsByHostPool
             Get-EitAzSessionHostsByHostPool -BearerToken MyBearerToken -Subscription MySubscription -HostPoolId MyHostPoolId
             
         .NOTES  
-            Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+            Copyright: (c)2025 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
             Version     :   1.1
             
             History:
@@ -257,7 +258,7 @@ function Get-EitAzSessionHostsByHostPool
             'Content-Type'  = $ContentType
         }
 
-        if ($HostPoolId -notmatch "^/subscriptions/.+/resourceGroups/.+/providers/.+/hostPools/.+$")
+        if ($HostPoolId -notmatch "(?i)^/subscriptions/.+/resourceGroups/.+/providers/.+/hostPools/.+$")
         {
             throw "Invalid HostPoolId format: $HostPoolId"
         }
@@ -307,7 +308,7 @@ function Get-EitAzUserSessionsByHostPool
             Get-EitAzUserSessionsByHostPool -BearerToken MyToken -Subscription MySub -HostPoolId /subscriptions/xxx/resourceGroups/yyy/providers/Microsoft.DesktopVirtualization/hostPools/zzz
             
         .NOTES  
-            Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+            Copyright: (c)2025 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
             Version     : 1.1
             
             History:
@@ -401,7 +402,7 @@ function Send-EitAzUserMessage
             Send-EitAzUserMessage -BearerToken $token -SessionId "/subscriptions/xxx/..." -MessageTitle "Warning" -MessageBody "Please save your work."
         
         .NOTES
-            Copyright: (c)2024 by EducateIT GmbH
+            Copyright: (c)2025 by EducateIT GmbH
             Version     : 1.1
 
             History:
@@ -446,7 +447,7 @@ function Send-EitAzUserMessage
             'Content-Type'  = $ContentType
         }
 
-        if ($SessionId -notmatch "^/subscriptions/.+/resourceGroups/.+/providers/.+/hostPools/.+/sessionHosts/.+/userSessions/.+$")
+        if ($SessionId -notmatch "(?i)^/subscriptions/.+/resourceGroups/.+/providers/.+/hostPools/.+/sessionHosts/.+/userSessions/.+$")
         {
             throw "Invalid SessionId format: $SessionId"
         }
@@ -474,9 +475,19 @@ function Send-EitAzUserMessage
             -replace '\\u0027', '''' `
             -replace '\\u0026', '&'
 
-        $resp = Invoke-WebRequest -Uri $uri -Headers $headers -Method Post -Body $jsonBody -UseBasicParsing -ErrorAction Stop
-
-        $StatusCode = [int]$resp.StatusCode
+        $response = Invoke-WebRequest -Uri $uri -Headers $headers -Method Post -Body $jsonBody -UseBasicParsing -ErrorAction Stop
+        $StatusCode = [int]$response.StatusCode
+		        
+        if ($StatusCode -eq 200)
+        {
+            $bSuccess = $true
+        }
+        else
+        {
+            throw "Unexpected status code: $StatusCode"
+        }
+		
+		
     }
     catch
     {
@@ -519,7 +530,7 @@ function Disconnect-EitAzUserSession
             Disconnect-EitAzUserSession -BearerToken $token -SessionId "/subscriptions/xxx/resourceGroups/rg/providers/Microsoft.DesktopVirtualization/hostPools/hp/sessionHosts/sh.domain.tld/userSessions/1"
             
         .NOTES  
-            Copyright: (c)2024 by EducateIT GmbH
+            Copyright: (c)2025 by EducateIT GmbH
             Version     : 1.1
             
             History:
@@ -554,7 +565,7 @@ function Disconnect-EitAzUserSession
 
     try
     {
-        if ($SessionId -notmatch "^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/[^/]+/hostPools/[^/]+/sessionHosts/[^/]+/userSessions/[^/]+$")
+        if ($SessionId -notmatch "(?i)^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/[^/]+/hostPools/[^/]+/sessionHosts/[^/]+/userSessions/[^/]+$")
         {
             throw "Invalid SessionId format: $SessionId"
         }
@@ -573,22 +584,17 @@ function Disconnect-EitAzUserSession
 
         $uri = "$AzBaseURL/subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/$Provider/hostPools/$hostPoolName/sessionHosts/$sessionHostName/userSessions/$userSessionId/disconnect" + "?api-version=" + $APIVersion
 
-        $resp = Invoke-WebRequest -Uri $uri -Headers $headers -Method Post -UseBasicParsing -ErrorAction Stop
+        $response = Invoke-WebRequest -Uri $uri -Headers $headers -Method Post -UseBasicParsing -ErrorAction Stop
 
-        $StatusCode = [int]$resp.StatusCode
-        if ($resp.Headers -and $resp.Headers['Operation-Location'])
-        {
-            $OperationLocation = $resp.Headers['Operation-Location']
-        }
-
-        if ($StatusCode -in 200, 202, 204)
+        $StatusCode = [int]$response.StatusCode
+        
+        if ($StatusCode -eq 200)
         {
             $bSuccess = $true
         }
         else
         {
-            $bSuccess = $false
-            $StatusMessage = "Unexpected status code: $StatusCode"
+            throw "Unexpected status code: $StatusCode"
         }
     }
     catch
@@ -609,11 +615,9 @@ function Disconnect-EitAzUserSession
         Success           = $bSuccess
         Message           = $StatusMessage
         StatusCode        = $StatusCode
-        OperationLocation = $OperationLocation
         SessionId         = $SessionId
     }
 }
-
 
 function Remove-EitAzUserSession
 {
@@ -671,10 +675,11 @@ function Remove-EitAzUserSession
     $bSuccess = $true
     $response = $null
     $StatusMessage = ""
+	$StatusCode = $null
 
     try
     {
-        if ($SessionID -notmatch "^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/[^/]+/hostPools/[^/]+/sessionHosts/[^/]+/userSessions/[^/]+$")
+        if ($SessionID -notmatch "(?i)^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/[^/]+/hostPools/[^/]+/sessionHosts/[^/]+/userSessions/[^/]+$")
         {
             throw "Invalid SessionId format: $SessionID"
         }
@@ -699,6 +704,16 @@ function Remove-EitAzUserSession
         $Uri = $BaseUri + "?api-version=" + $APIVersion + "&force=$forceValue"
 
         $response = Invoke-WebRequest -Uri $Uri -Headers $header -Method Delete -UseBasicParsing -ErrorAction Stop
+		$StatusCode = [int]$response.StatusCode
+        
+        if ($StatusCode -eq 200)
+        {
+            $bSuccess = $true
+        }
+        else
+        {
+            throw "Unexpected status code: $StatusCode"
+        }
     }
     catch
     {
@@ -709,7 +724,7 @@ function Remove-EitAzUserSession
     $ReturnObject = [pscustomobject]@{
         Success    = $bSuccess
         Message    = $StatusMessage
-        StatusCode = if ($response) { $response.StatusCode } else { $null }
+        StatusCode = $StatusCode 
         SessionID  = $SessionID
         BaseUri    = $BaseUri
         URI        = $Uri
@@ -717,8 +732,6 @@ function Remove-EitAzUserSession
 
     return $ReturnObject
 }
-
-
 
 function Get-EitAzUserSession
 {
@@ -740,7 +753,7 @@ function Get-EitAzUserSession
             Get-EitAzUserSession -BearerToken $token -SessionId "/subscriptions/xxx/resourceGroups/rg/providers/Microsoft.DesktopVirtualization/hostPools/hp/sessionHosts/host.domain.tld/userSessions/1"
         
         .NOTES  
-            Copyright: (c)2024 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+            Copyright: (c)2025 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
             Version     : 1.1
             
             History:
@@ -770,7 +783,6 @@ function Get-EitAzUserSession
         [ValidateNotNullOrEmpty()]
         [string]$Provider = 'Microsoft.DesktopVirtualization',
 
-        # No leading '?'; appended below.
         [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [string]$APIVersion = '2024-04-03'
@@ -785,7 +797,7 @@ function Get-EitAzUserSession
     try
     {
         # Validate resource ID before splitting
-        if ($SessionId -notmatch "^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/[^/]+/hostPools/[^/]+/sessionHosts/[^/]+/userSessions/[^/]+$")
+        if ($SessionId -notmatch "(?i)^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/[^/]+/hostPools/[^/]+/sessionHosts/[^/]+/userSessions/[^/]+$")
         {
             throw "Invalid SessionId format: $SessionId"
         }
@@ -804,19 +816,36 @@ function Get-EitAzUserSession
 
         $uri = "$AzBaseURL/subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/$Provider/hostPools/$hostPoolName/sessionHosts/$sessionHostName/userSessions/$userSessionId" + "?api-version=" + $APIVersion
 
-        $resp = Invoke-WebRequest -Uri $uri -Headers $headers -Method Get -UseBasicParsing -ErrorAction Stop
+        $response = Invoke-WebRequest -Uri $uri -Headers $headers -Method Get -UseBasicParsing -ErrorAction Stop
 
-        $StatusCode = [int]$resp.StatusCode
-
-        if ($resp.Content)
+        $StatusCode = [int]$response.StatusCode
+		$StatusDescription = $response.StatusDescription
+		
+		if ($StatusCode -eq 200)
         {
-            $parsed = $resp.Content | ConvertFrom-Json
-            $Session = $parsed
-            if ($parsed.properties)
-            {
-                $SessionState = $parsed.properties.sessionState
-            }
+            $bSuccess = $true
+			
+			if ($response.Content -ne $null)
+			{
+				$parsed = $response.Content | ConvertFrom-Json
+				$Session = $parsed
+				if ($parsed.properties)
+				{
+					$SessionState = $parsed.properties.sessionState
+				}
+			}
+			else
+			{
+				throw "Dy not get any content!"
+			}
         }
+        else
+        {
+            throw "Unexpected status code: $StatusCode"
+        }
+		
+
+       
     }
     catch
     {
@@ -837,8 +866,265 @@ function Get-EitAzUserSession
         Success      = $bSuccess
         Message      = $StatusMessage
         StatusCode   = $StatusCode
+		StatusDescription   = $StatusDescription
         SessionId    = $SessionId
         SessionState = $SessionState
         Session      = $Session
     }
 }
+
+function Get-EitAzSessionHost
+{
+    <#
+        .SYNOPSIS
+            Get Azure Session host
+        
+        .DESCRIPTION
+            Retrieves a single Azure Virtual Desktop (AVD) session host and returns its key properties.
+        
+        .PARAMETER BearerToken
+            A valid Azure BearerToken created by Get-EitAzBearerToken
+            
+        .PARAMETER SessionHostId
+            The full Azure resource ID of the session host
+            (/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DesktopVirtualization/hostPools/{hp}/sessionHosts/{sh})
+        
+        .EXAMPLE
+            Get-EitAzSessionHost -BearerToken $token -SessionHostId "/subscriptions/xxx/resourceGroups/rg/providers/Microsoft.DesktopVirtualization/hostPools/hp/sessionHost"
+        
+        .NOTES  
+            Copyright: (c)2025 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+            Version     : 1.0
+            
+            History:
+                V1.0 - 16.09.2025 - M.Trojahn - Initial creation
+               
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$BearerToken,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$SessionHostId,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ContentType = 'application/json',
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]$AzBaseURL = "https://management.azure.com",
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Provider = 'Microsoft.DesktopVirtualization',
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]$APIVersion = '2024-04-03'
+    )
+
+    $bSuccess = $true
+    $StatusMessage = "Successfully retrieved sessionhost."
+    $StatusCode = $null
+    $SessionHost = $null
+   
+
+    try
+    {
+        # Validate resource ID before splitting
+        if ($SessionHostId -notmatch "(?i)^/subscriptions/[0-9a-f-]+/resourcegroups/[a-z0-9_-]+/providers/Microsoft\.DesktopVirtualization/hostpools/[a-z0-9_-]+/sessionhosts/[a-z0-9.-]+$")
+        {
+            throw "Invalid SessionHostId format: $SessionHostId"
+        } 
+
+        $headers = @{
+            'Authorization' = "Bearer $BearerToken"
+            'Content-Type'  = $ContentType
+        }
+
+        $parts = $SessionHostId -split "/"
+        $subscriptionId  = $parts[2]
+        $resourceGroup   = $parts[4]
+        $hostPoolName    = $parts[8]
+        $sessionHostName = $parts[10]
+       
+
+        $uri = "$AzBaseURL/subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/$Provider/hostPools/$hostPoolName/sessionHosts/$sessionHostName" + "?api-version=" + $APIVersion
+
+        $response = Invoke-WebRequest -Uri $uri -Headers $headers -Method Get -UseBasicParsing -ErrorAction Stop
+
+        $StatusCode = [int]$response.StatusCode
+		$StatusDescription = $response.StatusDescription
+		
+		if ($StatusCode -eq 200)
+        {
+            $bSuccess = $true
+			
+			if ($response.Content -ne $null)
+			{
+				$parsed = $response.Content | ConvertFrom-Json
+				$SessionHost = $parsed
+			}
+			else
+			{
+				throw "Did not get any content!"
+			}
+        }
+        else
+        {
+            throw "Unexpected status code: $StatusCode"
+        }
+    }
+    catch
+    {
+        $bSuccess = $false
+        try
+        {
+            # Try to extract HTTP status code if present
+            $StatusCode = [int]$_.Exception.Response.StatusCode
+        }
+        catch
+        {
+            # ignore if not an HTTP error
+        }
+        $StatusMessage = "Failed to retrieve user session: $($_.Exception.Message)"
+    }
+
+    return [pscustomobject]@{
+        Success      		= $bSuccess
+        Message      		= $StatusMessage
+        StatusCode   		= $StatusCode
+		StatusDescription 	= $StatusDescription
+        SessionHostId    	= $SessionHostId
+        SessionHost      	= $SessionHost
+    }
+}
+
+function Set-EitAzSessionHostAllowNewSession
+{
+    <#
+        .SYNOPSIS
+           Set the allowNewSession parameter on a SessionHost
+        
+        .DESCRIPTION
+            Set the allowNewSession parameter on a SessionHost
+        
+        .PARAMETER BearerToken
+            A valid Azure BearerToken created by Get-EitAzBearerToken
+            
+        .PARAMETER SessionHostId
+            The full Azure resource ID of the session host
+            (/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DesktopVirtualization/hostPools/{hp}/sessionHosts/{sh})
+        
+        .EXAMPLE
+            Set-EitAzSessionHostAllowNewSession -BearerToken $myNearerToken -SessionId "/subscriptions/xxx/resourceGroups/rg/providers/Microsoft.DesktopVirtualization/hostPools/hp/sessionHosts"
+        
+        .NOTES  
+            Copyright: (c)2025 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+            Version     : 1.0
+            
+            History:
+                V1.0 - 16.09.2025 - M.Trojahn - Initial creation
+                
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$BearerToken,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$SessionHostId,
+
+		[Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+		[ValidateSet("Allow", "Disallow")]
+        [string]$Mode="Allow",
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ContentType = 'application/json',
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]$AzBaseURL = "https://management.azure.com",
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Provider = 'Microsoft.DesktopVirtualization',
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]$APIVersion = '2024-04-03'
+    )
+
+    $bSuccess = $true
+    $StatusMessage = "Successfully set allowNewSession parameter."
+ 
+    try
+    {
+        if ($Mode -eq "Allow")  
+		{
+            $allowNewSession = $true
+        }
+		else
+		{
+            $allowNewSession = $false
+        }
+		
+		# Validate resource ID before splitting
+        if ($SessionHostId -notmatch "(?i)^/subscriptions/[0-9a-f-]+/resourcegroups/[a-z0-9_-]+/providers/Microsoft\.DesktopVirtualization/hostpools/[a-z0-9_-]+/sessionhosts/[a-z0-9.-]+$")
+        {
+            throw "Invalid SessionHostId format: $SessionHostId"
+        } 
+
+        $headers = @{
+            'Authorization' = "Bearer $BearerToken"
+            'Content-Type'  = $ContentType
+        }
+		$body = @{
+			properties = @{
+				allowNewSession = $allowNewSession
+			}
+		}
+        $parts = $SessionHostId -split "/"
+        $subscriptionId  = $parts[2]
+        $resourceGroup   = $parts[4]
+        $hostPoolName    = $parts[8]
+        $sessionHostName = $parts[10]
+       
+
+        $uri = "$AzBaseURL/subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/$Provider/hostPools/$hostPoolName/sessionHosts/$sessionHostName" + "?api-version=" + $APIVersion
+     
+        # $response = Invoke-WebRequest -Uri $uri -Headers $headers -Method Get -UseBasicParsing -ErrorAction Stop
+		$response = Invoke-RestMethod -Uri $uri -Headers $headers -Method Patch -Body $body -ContentType $ContentType -ErrorAction Stop
+        if ($response -ne $null)
+		{
+			$bSuccess = $true
+		}
+		else
+		{
+			throw "No response received."
+		}
+    }
+    catch
+    {
+        $bSuccess = $false
+        $StatusMessage = "Failed to set allowNewSession parameter: $($_.Exception.Message)"
+    }
+
+    return [pscustomobject]@{
+        Success      			= $bSuccess
+        Message      			= $StatusMessage
+        SessionHostId    		= $SessionHostId
+    }
+}
+
+

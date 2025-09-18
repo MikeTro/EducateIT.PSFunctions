@@ -1,0 +1,21 @@
+# .github/workflows/test.yml
+name: PowerShell Pester Tests
+
+on:
+  push:
+    paths:
+      - '**.ps1'
+      - '**.psm1'
+      - '**.psd1'
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Pester Tests
+        shell: pwsh
+        run: ./RunTests.ps1
