@@ -1,4 +1,4 @@
-#
+# ===========================================================================
 # MSAvDFunctions.ps1
 # ===========================================================================
 # (c)2025 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
@@ -12,7 +12,7 @@
 #									Get-EitAzSessionHostsByHostPool, Get-EitAzUserSessionsByHostPool, Send-EitAzUserMessage, 
 #									Disconnect-EitAzUserSession, Remove-EitAzUserSession, Get-EitAzUserSession
 #	V1.1 - 18.08.2025 - M.Trojahn - adding Force Parameter in Remove-EitAzUserSession
-#	V1.2 - 16.09.2025 - M.Trojahn - adding funktion Get-EitAzSessionHost & Set-EitAzSessionHostAllowNewSession
+#	V1.2 - 16.09.2025 - M.Trojahn - add function Get-EitAzSessionHost & Set-EitAzSessionHostAllowNewSession
 #
 #
 #
@@ -1066,6 +1066,7 @@ function Set-EitAzSessionHostAllowNewSession
     )
 
     $bSuccess = $true
+	$SessionHostProperties = $null
     $StatusMessage = "Successfully set allowNewSession parameter."
  
     try
@@ -1104,10 +1105,11 @@ function Set-EitAzSessionHostAllowNewSession
         $uri = "$AzBaseURL/subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/$Provider/hostPools/$hostPoolName/sessionHosts/$sessionHostName" + "?api-version=" + $APIVersion
      
         # $response = Invoke-WebRequest -Uri $uri -Headers $headers -Method Get -UseBasicParsing -ErrorAction Stop
-		$response = Invoke-RestMethod -Uri $uri -Headers $headers -Method Patch -Body $body -ContentType $ContentType -ErrorAction Stop
+		$response = Invoke-RestMethod -Uri $uri -Headers $headers -Method Patch -Body ($body | ConvertTo-Json) -ContentType $ContentType -ErrorAction Stop
         if ($response -ne $null)
 		{
 			$bSuccess = $true
+			$SessionHostProperties = $response.properties
 		}
 		else
 		{
@@ -1124,6 +1126,7 @@ function Set-EitAzSessionHostAllowNewSession
         Success      			= $bSuccess
         Message      			= $StatusMessage
         SessionHostId    		= $SessionHostId
+		SessionHostProperties	= $SessionHostProperties
     }
 }
 
