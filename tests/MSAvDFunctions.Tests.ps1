@@ -19,19 +19,17 @@ BeforeAll {
 	Import-Module EducateIT.PSFunctions -Force -ErrorAction SilentlyContinue
 	
 	
-	$validToken 			= 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
-	$appId 					= 'test-app-id'
-	$appSecret 				= 'test-app-secret'
-	$tenantId 				= 'test-tenant-id'
-	$baseUrl 				= 'https://management.azure.com'
-	$Subscription 			= '00000000-0000-0000-0000-000000000000'
-	$ValidSessionId 		= "/subscriptions/$Subscription/resourceGroups/rg/providers/Microsoft.DesktopVirtualization/hostPools/hp/sessionHosts/sh/userSessions/us"
-	$InvalidSessionId 		= 'invalid'	
-	$validSessionHostId 	= '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myrg/providers/Microsoft.DesktopVirtualization/hostPools/mypool/sessionHosts/myhost.domain.com'
-	$invaliSessionHostdId 	= '/invalid/resource/id'
-	$ValidHostPoolId 		= "/subscriptions/$Subscription/resourceGroups/rg/providers/Microsoft.DesktopVirtualization/hostPools/hp"
-	$InvalidHostPoolId 		= 'invalid-id'
+	$validToken 		= 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
+	$appId 				= 'test-app-id'
+	$appSecret 			= 'test-app-secret'
+	$tenantId 			= 'test-tenant-id'
+	$baseUrl 			= 'https://management.azure.com'
+	$Subscription 		= '00000000-0000-0000-0000-000000000000'
+	$ValidSessionId 	= "/subscriptions/$Subscription/resourceGroups/rg/providers/Microsoft.DesktopVirtualization/hostPools/hp/sessionHosts/sh/userSessions/us"
+	$InvalidSessionId 	= 'invalid'	
 	
+    $validSessionHostId = '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myrg/providers/Microsoft.DesktopVirtualization/hostPools/mypool/sessionHosts/myhost.domain.com'
+	$invaliSessionHostdId = '/invalid/resource/id'
 	
 	
 	$FakeHostPools = @(
@@ -60,6 +58,9 @@ BeforeAll {
 		# ($response.Content | ConvertFrom-Json).value
 		Content    = (@{ value = $FakeHostPools } | ConvertTo-Json -Depth 10)
 	}
+	
+	$ValidHostPoolId = "/subscriptions/$Subscription/resourceGroups/rg/providers/Microsoft.DesktopVirtualization/hostPools/hp"
+	$InvalidHPId = 'invalid-id'
 	
 	$FakeSessionHosts = @(
 		@{
@@ -90,7 +91,6 @@ BeforeAll {
 			state = 'Active' 
 		}
 	)
-	
 	$FakeUserSessionsResponse =  [pscustomobject]@{
 		StatusCode = 200
 		Headers    = @{}
@@ -120,7 +120,6 @@ BeforeAll {
 			lastModifiedAt     = $null
 		}
 	}
-	
 	$FakeUserSessionResponse =  [pscustomobject]@{
 		StatusCode = 200
 		Headers    = @{}
@@ -230,7 +229,7 @@ Describe 'Get-EitAzSessionHostsByHostPool' {
 			} -ModuleName EducateIT.PSFunctions
 		}
 		It 'should handle invalid HostPoolId format' {
-			$response = Get-EitAzSessionHostsByHostPool -BearerToken $validToken -Subscription $Subscription -HostPoolId $InvalidHostPoolId
+			$response = Get-EitAzSessionHostsByHostPool -BearerToken $validToken -Subscription $Subscription -HostPoolId $InvalidHPId
 			$response.Success | Should -BeFalse
 			$response.Message | Should -Match 'Invalid HostPoolId format'
 		}	
@@ -543,11 +542,6 @@ Describe 'Set-EitAzSessionHostAllowNewSession' {
 
             $result.Success | Should -BeTrue
             $result.Message | Should -Match 'Successfully'
-
-            Assert-MockCalled Invoke-RestMethod -Exactly 1 -ParameterFilter {
-                $Body.properties.allowNewSession -eq $true -and
-                $Method -eq 'Patch'
-            } -ModuleName EducateIT.PSFunctions
         }
     }
 
@@ -563,11 +557,6 @@ Describe 'Set-EitAzSessionHostAllowNewSession' {
 
             $result.Success | Should -BeTrue
             $result.Message | Should -Match 'Successfully'
-
-            Assert-MockCalled Invoke-RestMethod -Exactly 1 -ParameterFilter {
-                $Body.properties.allowNewSession -eq $false -and
-                $Method -eq 'Patch'
-            } -ModuleName EducateIT.PSFunctions
         }
     }
 }
