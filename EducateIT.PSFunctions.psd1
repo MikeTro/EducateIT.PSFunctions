@@ -55,7 +55,11 @@
 #			V2.2.5.1 - 18.08.2005 - M. Trojahn - adding Force Parameter in Remove-EitAzUserSession in MSAvDFunctions.ps1
 #
 #			V3.0.0.0 - 05.09.2005 - M. Trojahn - Restructured for use with Pester unit tests.
-#			V3.0.1.0 - 16.10.2005 - M. Trojahn - Go back to log4net 2.15 because 3.0 isn't compatible
+#			V3.0.1.0 - 16.10.2005 - M. Trojahn - Go back to log4net 2.0.15 because 3.0 isn't compatible
+#			V3.0.2.0 - 17.10.2005 - M. Trojahn - use again log4net 3.2
+#												 remove function New-FileEitLogger because it doesn't work with log4net 3.2
+#												 add alias New-FileEitLogger to New-EitLogger to ensure backwards compatibility
+#												 add LogFunctions.Tests.ps1
 #
 ###############################################################################################
 
@@ -65,7 +69,7 @@
 	# RootModule = ''
 
 	# Version number of this module.
-	ModuleVersion = '3.0.1.0'
+	ModuleVersion = '3.0.2.0'
 
 	# Supported PSEditions
 	# CompatiblePSEditions = @()
