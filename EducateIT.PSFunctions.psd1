@@ -60,6 +60,7 @@
 #												 remove function New-FileEitLogger because it doesn't work with log4net 3.2
 #												 add alias New-FileEitLogger to New-EitLogger to ensure backwards compatibility
 #												 add LogFunctions.Tests.ps1
+#			V3.0.3.0 - 19.01.2026 - M. Trojahn - Remove log4net.dll and use our own logging function.
 #
 ###############################################################################################
 
@@ -69,7 +70,7 @@
 	# RootModule = ''
 
 	# Version number of this module.
-	ModuleVersion = '3.0.2.0'
+	ModuleVersion = '3.0.3.0'
 
 	# Supported PSEditions
 	# CompatiblePSEditions = @()
@@ -84,7 +85,7 @@
 	CompanyName = 'EducateIT GmbH'
 
 	# Copyright statement for this module
-	Copyright = '(c) 2025 EducateIT GmbH. All rights reserved.'
+	Copyright = '(c) 2026 EducateIT GmbH. All rights reserved.'
 
 	# Description of the functionality provided by this module
 	Description = 'EducateIT Powershell functions'
