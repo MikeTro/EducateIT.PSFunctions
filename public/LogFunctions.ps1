@@ -7,14 +7,15 @@
 
        .NOTES  
 			Author		: EducateIT GmbH - info@educateit.ch 
-			Version		: 1.3
+			Version		: 1.4
 			
 			History		: 
 							V1.0	-	14.12.2020	-	created from ScriptFunctions.ps1
 							V1.1	-	13.04.2023	-	add New-EitLogger
 							V1.2	-	17.10.2025	-	remove function New-FileEitLogger
 														add alias New-FileEitLogger to New-EitLogger to ensure backwards compatibility
-							V1.3	-	19.01.2026	-	Remove log4net.dll and use our own logging function.					
+							V1.3	-	19.01.2026	-	Remove log4net.dll and use our own logging function.
+							V1.4	-	11.02.2026	-	Create the log path if it does not exist in function New-EitLogger.					
 #>
 
 class EitLogger
@@ -222,6 +223,7 @@ function New-EitLogger {
 			
 			History:
 				V1.0 - 19.01.2026 - M.Trojahn - Initial creation	
+				V1.1 - 11.02.2026 - M.Trojahn - Create the log path if it does not exist.	
 			
 	#>
 
@@ -237,6 +239,11 @@ function New-EitLogger {
 
         [int]$MaxArchiveFiles = 10
     )
+	
+	if (!(Test-Path $LogFilePath -PathType Leaf)) 
+	{
+		New-Item $LogFilePath -Force 
+	}
 
     if ($ToMem.IsPresent)
     {

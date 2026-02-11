@@ -61,6 +61,7 @@
 #												 add alias New-FileEitLogger to New-EitLogger to ensure backwards compatibility
 #												 add LogFunctions.Tests.ps1
 #			V3.0.3.0 - 19.01.2026 - M. Trojahn - Remove log4net.dll and use our own logging function.
+#			V3.0.3.1 - 11.02.2026 - M. Trojahn - Create the log path if it does not exist in LogFunctions.
 #
 ###############################################################################################
 
@@ -70,7 +71,7 @@
 	# RootModule = ''
 
 	# Version number of this module.
-	ModuleVersion = '3.0.3.0'
+	ModuleVersion = '3.0.3.1'
 
 	# Supported PSEditions
 	# CompatiblePSEditions = @()
