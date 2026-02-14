@@ -242,7 +242,7 @@ function New-EitLogger {
 	
 	if (!(Test-Path $LogFilePath -PathType Leaf)) 
 	{
-		New-Item $LogFilePath -Force 
+		New-Item $LogFilePath -Force | Out-Null
 	}
 
     if ($ToMem.IsPresent)
