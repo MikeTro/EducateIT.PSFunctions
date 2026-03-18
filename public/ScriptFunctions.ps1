@@ -1,8 +1,8 @@
 #
 # ScriptFunctions.ps1
 # ===========================================================================
-# (c)2024 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.13
+# (c)2026 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
+# Version 1.14
 #
 # Useful Script functions
 # History:
@@ -21,6 +21,7 @@
 #	V1.11 - 11.05.2023 - M.Trojahn - Add Raptor to Server ValidateSet in function New-EitEncryptedPassword
 #	V1.12 - 07.09.2023 - M.Trojahn - Add UTF8 Encoding in function New-EitEncryptedPassword
 #	V1.13 - 26.09.2024 - M.Trojahn - Add Get-EitShortPath
+#	V1.14 - 18.03.2026 - M.Trojahn - Replace New-TemporaryFile by Get-Item ([System.IO.Path]::GetTempFilename()) for PS7 compatibility
 #	
 # ===========================================================================
 
@@ -456,11 +457,12 @@ function New-EitSecret
 			 New-EitSecret -Label MyLabel
 		
 		.NOTES  
-			Copyright: (c)2021 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Copyright: (c)2026 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.1
 			
 			History:
 				V1.0 - 30.06.2021 - M.Trojahn - Initial creation
+				V1.1 - 18.03.2026 - M.Trojahn - Replace New-TemporaryFile by Get-Item ([System.IO.Path]::GetTempFilename()) for PS7 compatibility
 			
 	#>	
 	param (
@@ -475,7 +477,7 @@ function New-EitSecret
 	{
 		$bSuccess = $true
 		$StatusMessage = "New secret successfully created "
-		$SecretInfo = New-TemporaryFile
+		$SecretInfo = Get-Item ([System.IO.Path]::GetTempFilename())
 		$NewSecret = $Null
 		$exe = "$env:ProgramFiles\EducateIT\SecretGeneratorCommand\SecretGeneratorCommand.exe"
 		if ($LimitForWeb)
@@ -526,13 +528,14 @@ function New-EitEncryptedPassword
 			 New-EitEncryptedPassword -Server ActionsServer -Password MyPassword
 		
 		.NOTES  
-			Copyright: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.2
+			Copyright: (c)2026 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+			Version		:	1.3
 			
 			History:
 				V1.0 - 03.08.2022 - M.Trojahn - Initial creation
 				V1.1 - 11.05.2023 - M.Trojahn - Add Raptor to Server ValidateSet
 				V1.2 - 07.09.2023 - M.Trojahn - Add UTF8 Encoding
+				V1.3 - 18.03.2026 - M.Trojahn - Replace New-TemporaryFile by Get-Item ([System.IO.Path]::GetTempFilename()) for PS7 compatibility
 			
 	#>	
 	param (
@@ -543,8 +546,8 @@ function New-EitEncryptedPassword
 	{
 		$bSuccess = $true
 		$StatusMessage = "Password successfully created "
-		$PWFile = New-TemporaryFile
-		$MyErrorFile = New-TemporaryFile
+		$PWFile = Get-Item ([System.IO.Path]::GetTempFilename())
+		$MyErrorFile = Get-Item ([System.IO.Path]::GetTempFilename())
 		$exe = "$env:ProgramFiles\EducateIT\" + $Server + "\" + $Server + ".exe"
 		$arguments = "--pe-encode-password=" + $Password
 		$EncryptedPassword = $null

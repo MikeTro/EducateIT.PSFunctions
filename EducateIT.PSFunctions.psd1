@@ -62,6 +62,7 @@
 #												 add LogFunctions.Tests.ps1
 #			V3.0.3.0 - 19.01.2026 - M. Trojahn - Remove log4net.dll and use our own logging function.
 #			V3.0.3.1 - 11.02.2026 - M. Trojahn - Create the log path if it does not exist in LogFunctions.
+#			V3.0.4.0 - 18.03.2026 - M. Trojahn - Replace New-TemporaryFile by Get-Item ([System.IO.Path]::GetTempFilename()) for PS7 compatibility
 #
 ###############################################################################################
 
@@ -71,7 +72,7 @@
 	# RootModule = ''
 
 	# Version number of this module.
-	ModuleVersion = '3.0.3.1'
+	ModuleVersion = '3.0.4.0'
 
 	# Supported PSEditions
 	# CompatiblePSEditions = @()

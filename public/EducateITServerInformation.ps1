@@ -1,8 +1,8 @@
 #
 # EducateITServerInformation.ps1
 # ===========================================================================
-# (c)2021 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.2
+# (c)2026 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
+# Version 1.3
 #
 # Get the Versions from the executables
 # History:
@@ -11,6 +11,7 @@
 #   								add Get-EitServerServiceInfo
 #
 #	V1.2 - 12.12.2023 - M.Trojahn - only use remoting if it is required in function Get-EitServerServiceInfo
+#	V1.3 - 18.03.2026 - M.Trojahn - Replace New-TemporaryFile by Get-Item ([System.IO.Path]::GetTempFilename()) for PS7 compatibility
 # ===========================================================================
 
 
@@ -170,13 +171,14 @@ function Get-EitServerServiceInfo
 		ExpiresInDays  	: 165
 
 	.NOTES  
-		Copyright: (c)2023 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-		Version		:	1.2
+		Copyright: (c)2026 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
+		Version		:	1.3
 		
 		History:
             V1.0 - 07.11.2021 - M.Trojahn - Initial creation
 			V1.1 - 17.11.2021 - M.Trojahn - Add Name parameter, required for reporting
 			V1.2 - 12.12.2023 - M.Trojahn - only use remoting if it is required
+			V1.3 - 18.03.2026 - M.Trojahn - Replace New-TemporaryFile by Get-Item ([System.IO.Path]::GetTempFilename()) for PS7 compatibility
 			
     #>	
 	param(
@@ -188,7 +190,7 @@ function Get-EitServerServiceInfo
 	{
 		if (Test-Path $ServerExePath)
 		{
-			$tmpOutPut = New-TemporaryFile
+			$tmpOutPut = Get-Item ([System.IO.Path]::GetTempFilename())
 			$dummy = Start-Process -FilePath $ServerExePath -ArgumentList "--license-status" -RedirectStandardOutput $tmpOutPut -PassThru -Wait
 			$LicData = Get-Content $tmpOutPut
 			if ($LicData -match "Licensed to:")
@@ -203,7 +205,7 @@ function Get-EitServerServiceInfo
 			}
 			Remove-Item $tmpOutPut
 			
-			$tmpOutPut = New-TemporaryFile
+			$tmpOutPut = Get-Item ([System.IO.Path]::GetTempFilename())
 			$dummy = Start-Process -FilePath $ServerExePath -ArgumentList "--license-status-json" -RedirectStandardOutput $tmpOutPut -PassThru -Wait
 				
 			$LicData = try { Get-Content $tmpOutPut | ConvertFrom-Json } catch { $null }
@@ -227,7 +229,7 @@ function Get-EitServerServiceInfo
 			$ServerExePath = $args[1]
 			if (Test-Path $ServerExePath)
 			{
-				$tmpOutPut = New-TemporaryFile
+				$tmpOutPut = Get-Item ([System.IO.Path]::GetTempFilename())
 				$dummy = Start-Process -FilePath $ServerExePath -ArgumentList "--license-status" -RedirectStandardOutput $tmpOutPut -PassThru -Wait
 				$LicData = Get-Content $tmpOutPut
 				if ($LicData -match "Licensed to:")
@@ -242,7 +244,7 @@ function Get-EitServerServiceInfo
 				}
 				Remove-Item $tmpOutPut
 				
-				$tmpOutPut = New-TemporaryFile
+				$tmpOutPut = Get-Item ([System.IO.Path]::GetTempFilename())
 				$dummy = Start-Process -FilePath $ServerExePath -ArgumentList "--license-status-json" -RedirectStandardOutput $tmpOutPut -PassThru -Wait
 					
 				$LicData = try { Get-Content $tmpOutPut | ConvertFrom-Json } catch { $null }
