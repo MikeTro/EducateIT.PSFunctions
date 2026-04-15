@@ -7,7 +7,7 @@
 
        .NOTES  
 			Author		: EducateIT GmbH - info@educateit.ch 
-			Version		: 1.4
+			Version		: 1.5
 			
 			History		: 
 							V1.0	-	14.12.2020	-	created from ScriptFunctions.ps1
@@ -15,7 +15,8 @@
 							V1.2	-	17.10.2025	-	remove function New-FileEitLogger
 														add alias New-FileEitLogger to New-EitLogger to ensure backwards compatibility
 							V1.3	-	19.01.2026	-	Remove log4net.dll and use our own logging function.
-							V1.4	-	11.02.2026	-	Create the log path if it does not exist in function New-EitLogger.					
+							V1.4	-	11.02.2026	-	Create the log path if it does not exist in function New-EitLogger.		
+							V1.5    - 	15.04.2026 - 	Create log path only if log to file	in function New-EitLogger.									
 #>
 
 class EitLogger
@@ -219,11 +220,12 @@ function New-EitLogger {
 			
 		.NOTES  
 			Copyright: (c)2026 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.0
+			Version		:	1.2
 			
 			History:
 				V1.0 - 19.01.2026 - M.Trojahn - Initial creation	
 				V1.1 - 11.02.2026 - M.Trojahn - Create the log path if it does not exist.	
+				V1.2 - 15.04.2026 - M.Trojahn - Create log path only if log to file	
 			
 	#>
 
@@ -239,11 +241,6 @@ function New-EitLogger {
 
         [int]$MaxArchiveFiles = 10
     )
-	
-	if (!(Test-Path $LogFilePath -PathType Leaf)) 
-	{
-		New-Item $LogFilePath -Force | Out-Null
-	}
 
     if ($ToMem.IsPresent)
     {
@@ -263,6 +260,10 @@ function New-EitLogger {
         $datedName = "${baseName}_$dateStamp$extension"
 
         $LogFilePath = Join-Path -Path $directory -ChildPath $datedName
+		if (!(Test-Path $LogFilePath -PathType Leaf)) 
+		{
+			New-Item $LogFilePath -Force | Out-Null
+		}
     }
 
     return [EitLogger]::new($true, $LogFilePath, $MaxFileSizeKB, $MaxArchiveFiles)

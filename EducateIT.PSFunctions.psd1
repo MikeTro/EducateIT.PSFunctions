@@ -63,6 +63,7 @@
 #			V3.0.3.0 - 19.01.2026 - M. Trojahn - Remove log4net.dll and use our own logging function.
 #			V3.0.3.1 - 11.02.2026 - M. Trojahn - Create the log path if it does not exist in LogFunctions.
 #			V3.0.4.0 - 18.03.2026 - M. Trojahn - Replace New-TemporaryFile by Get-Item ([System.IO.Path]::GetTempFilename()) for PS7 compatibility
+#			V3.0.5.0 - 15.04.2026 - M. Trojahn - Add ServiceFunctions.ps1 --> adds Update-EitServiceAccount
 #
 ###############################################################################################
 
@@ -72,7 +73,7 @@
 	# RootModule = ''
 
 	# Version number of this module.
-	ModuleVersion = '3.0.4.0'
+	ModuleVersion = '3.0.5.0'
 
 	# Supported PSEditions
 	# CompatiblePSEditions = @()
@@ -145,7 +146,8 @@
 		'.\public\RDSFunctions.ps1',
 		'.\public\MSAvDFunctions.ps1'
 		'.\public\CertificateFunctions.ps1',
-		'.\public\CitrixCVADFunctions.ps1'
+		'.\public\CitrixCVADFunctions.ps1',
+		'.\public\ServiceFunctions.ps1'
 	)
 
 	# Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
