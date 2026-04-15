@@ -236,12 +236,9 @@ function New-EitLogger {
     param
     (
         [switch]$ToMem,
-
         [string]$LogFilePath = "$PSScriptRoot\logfile.log",
-
         [int]$MaxFileSizeKB = 10000,
-
-        [int]$MaxArchiveFiles = 10
+        [int]$MaxArchiveFiles = 10,
 		[bool]$enableRolling = $false
     )
 
