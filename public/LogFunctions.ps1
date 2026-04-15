@@ -7,7 +7,7 @@
 
        .NOTES  
 			Author		: EducateIT GmbH - info@educateit.ch 
-			Version		: 1.5
+			Version		: 1.6
 			
 			History		: 
 							V1.0	-	14.12.2020	-	created from ScriptFunctions.ps1
@@ -16,7 +16,8 @@
 														add alias New-FileEitLogger to New-EitLogger to ensure backwards compatibility
 							V1.3	-	19.01.2026	-	Remove log4net.dll and use our own logging function.
 							V1.4	-	11.02.2026	-	Create the log path if it does not exist in function New-EitLogger.		
-							V1.5    - 	15.04.2026 - 	Create log path only if log to file	in function New-EitLogger.									
+							V1.5    - 	15.04.2026 	- 	Create log path only if log to file	in function New-EitLogger.		
+							V1.6 	-	15.04.2026 	- 	Add fake enableRolling paramater for backward compatibility	in function New-EitLogger.						
 #>
 
 class EitLogger
@@ -220,12 +221,13 @@ function New-EitLogger {
 			
 		.NOTES  
 			Copyright: (c)2026 by EducateIT GmbH - http://educateit.ch - info@educateit.ch
-			Version		:	1.2
+			Version		:	1.3
 			
 			History:
 				V1.0 - 19.01.2026 - M.Trojahn - Initial creation	
 				V1.1 - 11.02.2026 - M.Trojahn - Create the log path if it does not exist.	
 				V1.2 - 15.04.2026 - M.Trojahn - Create log path only if log to file	
+				V1.3 - 15.04.2026 - M.Trojahn - add fake enableRolling paramater for backward compatibility
 			
 	#>
 
@@ -240,6 +242,7 @@ function New-EitLogger {
         [int]$MaxFileSizeKB = 10000,
 
         [int]$MaxArchiveFiles = 10
+		[bool]$enableRolling = $false
     )
 
     if ($ToMem.IsPresent)
