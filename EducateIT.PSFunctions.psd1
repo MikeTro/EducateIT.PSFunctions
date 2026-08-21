@@ -73,7 +73,7 @@
 	# RootModule = ''
 
 	# Version number of this module.
-	ModuleVersion = '3.0.5.0'
+	ModuleVersion = '3.0.6.0'
 
 	# Supported PSEditions
 	# CompatiblePSEditions = @()
@@ -147,7 +147,8 @@
 		'.\public\MSAvDFunctions.ps1'
 		'.\public\CertificateFunctions.ps1',
 		'.\public\CitrixCVADFunctions.ps1',
-		'.\public\ServiceFunctions.ps1'
+		'.\public\ServiceFunctions.ps1',
+		'.\public\LicenseFunctions.ps1'
 	)
 
 	# Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
