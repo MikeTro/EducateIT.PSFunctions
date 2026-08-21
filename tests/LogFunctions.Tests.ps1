@@ -14,34 +14,21 @@
 # ===========================================================================
 # Requires -Module Pester -Version 5.5.5
 
-Import-Module EducateIT.PSFunctions -Force -ErrorAction SilentlyContinue
-# ===========================================================================
-# LogFunctions.Tests.ps1
-# ===========================================================================
-# (c)2025 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.0
-#
-# Pester tests for LogFunctions.ps1
-#
-# History:
-#   V1.0 - 17.10.2025 - M.Trojahn - Initial creation
-#									 
-#
-#
-# ===========================================================================
-# Requires -Module Pester -Version 5.5.5
+# Run with: -Path .\LogFunctions.Tests.ps1 -Output Detailed
 
-# Run with: Invoke-Pester -Path .\SimpleLogger.Tests.ps1
+BeforeAll {
+
+	$testLogPath = "$PSScriptRoot\testlog.log"
+	$dateStamp = (Get-Date).ToString("yyyy-MM-dd")
+	$baseName = [System.IO.Path]::GetFileNameWithoutExtension($testLogPath)
+	$extension = [System.IO.Path]::GetExtension($testLogPath)
+	$directory = [System.IO.Path]::GetDirectoryName($testLogPath)
+
+	$datedName = "${baseName}_$dateStamp$extension"
+	$testLogFile = Join-Path -Path $directory -ChildPath $datedName
+}
 
 
-$testLogPath = "$PSScriptRoot\testlog.log"
-$dateStamp = (Get-Date).ToString("yyyy-MM-dd")
-$baseName = [System.IO.Path]::GetFileNameWithoutExtension($testLogPath)
-$extension = [System.IO.Path]::GetExtension($testLogPath)
-$directory = [System.IO.Path]::GetDirectoryName($testLogPath)
-
-$datedName = "${baseName}_$dateStamp$extension"
-$testLogFile = Join-Path -Path $directory -ChildPath $datedName
 
 Describe 'Logger Module Tests (Pester 5.5.5)' {
 
