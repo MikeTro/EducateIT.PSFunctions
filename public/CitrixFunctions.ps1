@@ -670,7 +670,7 @@ function Remove-EitProvVM {
 	) 
 	if ($EnableDebug) 
 	{		
-			$Logger.Debug("Command: New-EitProvVM -MachineName " + $MachineName + " -CatalogName " + $CatalogName + " -DDCAddress " + $DDCAddress + " -Logger " +  $Logger + " -EnableDebug " + $EnableDebug)
+			$Logger.Debug("Command: Remove-EitProvVM -MachineName " + $MachineName + " -CatalogName " + $CatalogName + " -DDCAddress " + $DDCAddress + " -Logger " +  $Logger + " -EnableDebug " + $EnableDebug)
 	}
 	if ([Regex]::Matches($MachineName, "\\").Count -ne 0) 
 	{
