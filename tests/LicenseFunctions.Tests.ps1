@@ -481,6 +481,56 @@ Describe 'Register-EitLicense' `
                 $result.Message |
                     Should -Match 'Unable to start process'
             }
+			
+			It 'handles Raptor V4.48.0 license errors written to StandardOutput' `
+			{
+				Mock Start-Process `
+				{
+					return [pscustomobject]@{
+						ExitCode = 9
+					}
+				}
+
+				Mock Get-Content `
+				{
+					param(
+						$LiteralPath
+					)
+
+					if ($LiteralPath -eq $script:TempOutputPath)
+					{
+						return @'
+EducateIT Raptor V4.48.0 - License System
+Found no valid subscription code in the settings.
+EducateIT Raptor V4.48.0 - Service Error
+The license system reported an error.
+'@
+					}
+
+					return ''
+				}
+
+				$result = Register-EitLicense `
+					-Application $script:TestApplication `
+					-Reactivate
+
+				$result.Success | Should -BeFalse
+				$result.ExitCode | Should -Be 9
+
+				$result.StandardOutput |
+					Should -Match 'Found no valid subscription code in the settings'
+
+				$result.Message |
+					Should -Match 'Found no valid subscription code in the settings'
+
+				$result.StandardError |
+					Should -BeNullOrEmpty
+
+				Should -Invoke Start-Process `
+					-Times 1 `
+					-Exactly
+			}
+			
         }
 
 
@@ -612,5 +662,200 @@ Describe 'Register-EitLicense' `
                     Should -Be 7
             }
         }
+		
+		Context 'ProxyServer parameter' `
+		{
+			BeforeEach `
+			{
+				Mock Start-Process `
+				{
+					return [pscustomobject]@{
+						ExitCode = 0
+					}
+				}
+			}
+
+			It 'passes the proxy argument during reactivation' `
+			{
+				$result = Register-EitLicense `
+					-Application $script:TestApplication `
+					-Reactivate `
+					-ProxyServer 'http://192.168.1.10:8888'
+
+				$result.Success | Should -BeTrue
+				$result.Mode | Should -Be 'Reactivate'
+
+				Should -Invoke Start-Process `
+					-Times 1 `
+					-Exactly `
+					-ParameterFilter `
+					{
+						$FilePath -eq $script:TestApplication -and
+						$ArgumentList -eq '--license-reactivate --license-proxy=http://192.168.1.10:8888'
+					}
+			}
+
+			It 'passes the proxy argument during activation' `
+			{
+				$result = Register-EitLicense `
+					-Application $script:TestApplication `
+					-Activate `
+					-License 'ABCDE-12345' `
+					-ProxyServer 'http://192.168.1.10:8888'
+
+				$result.Success | Should -BeTrue
+				$result.Mode | Should -Be 'Activate'
+
+				Should -Invoke Start-Process `
+					-Times 1 `
+					-Exactly `
+					-ParameterFilter `
+					{
+						$FilePath -eq $script:TestApplication -and
+						$ArgumentList -eq '--license-activate=ABCDE-12345 --license-proxy=http://192.168.1.10:8888'
+					}
+			}
+
+			It 'does not add a proxy argument when ProxyServer is omitted' `
+			{
+				$result = Register-EitLicense `
+					-Application $script:TestApplication `
+					-Reactivate
+
+				$result.Success | Should -BeTrue
+
+				Should -Invoke Start-Process `
+					-Times 1 `
+					-Exactly `
+					-ParameterFilter `
+					{
+						$ArgumentList -eq '--license-reactivate'
+					}
+			}
+
+			It 'supports a proxy hostname instead of an IP address' `
+			{
+				$result = Register-EitLicense `
+					-Application $script:TestApplication `
+					-Reactivate `
+					-ProxyServer 'http://proxy.example.local:3128'
+
+				$result.Success | Should -BeTrue
+
+				Should -Invoke Start-Process `
+					-Times 1 `
+					-Exactly `
+					-ParameterFilter `
+					{
+						$ArgumentList -eq '--license-reactivate --license-proxy=http://proxy.example.local:3128'
+					}
+			}
+
+			It 'rejects a proxy URL without an explicit port' `
+			{
+				{
+					Register-EitLicense `
+						-Application $script:TestApplication `
+						-Reactivate `
+						-ProxyServer 'http://proxyserver'
+				} | Should -Throw
+
+				Should -Invoke Start-Process -Times 0
+			}
+
+			It 'rejects an invalid proxy port' `
+			{
+				{
+					Register-EitLicense `
+						-Application $script:TestApplication `
+						-Reactivate `
+						-ProxyServer 'http://proxyserver:99999'
+				} | Should -Throw
+
+				Should -Invoke Start-Process -Times 0
+			}
+
+			It 'rejects HTTPS when only HTTP is supported' `
+			{
+				{
+					Register-EitLicense `
+						-Application $script:TestApplication `
+						-Reactivate `
+						-ProxyServer 'https://proxyserver:8888'
+				} | Should -Throw
+
+				Should -Invoke Start-Process -Times 0
+			}
+
+			It 'rejects a proxy URL containing a path' `
+			{
+				{
+					Register-EitLicense `
+						-Application $script:TestApplication `
+						-Reactivate `
+						-ProxyServer 'http://proxyserver:8888/proxy'
+				} | Should -Throw
+
+				Should -Invoke Start-Process -Times 0
+			}
+
+			It 'rejects an empty proxy URL when explicitly supplied' `
+			{
+				{
+					Register-EitLicense `
+						-Application $script:TestApplication `
+						-Reactivate `
+						-ProxyServer ''
+				} | Should -Throw
+
+				Should -Invoke Start-Process -Times 0
+			}
+
+			It 'defines ProxyServer in both parameter sets' `
+			{
+				$command = Get-Command Register-EitLicense
+
+				foreach ($parameterSetName in @('Activate', 'Reactivate'))
+				{
+					$parameterSet = $command.ParameterSets |
+						Where-Object `
+						{
+							$_.Name -eq $parameterSetName
+						}
+
+					$proxyParameter = $parameterSet.Parameters |
+						Where-Object `
+						{
+							$_.Name -eq 'ProxyServer'
+						}
+
+					$proxyParameter | Should -Not -BeNullOrEmpty
+					$proxyParameter.IsMandatory | Should -BeFalse
+				}
+			}
+
+			It 'passes the activation license and proxy as separate arguments' `
+			{
+				$result = Register-EitLicense `
+					-Application $script:TestApplication `
+					-Activate `
+					-License 'ABCDE-12345' `
+					-ProxyServer 'http://10.0.61.197:8888'
+
+				$result.Success | Should -BeTrue
+
+				Should -Invoke Start-Process `
+					-Times 1 `
+					-Exactly
+
+				Should -Invoke Start-Process `
+					-Times 1 `
+					-Exactly `
+					-ParameterFilter `
+					{
+						$ArgumentList -eq '--license-activate=ABCDE-12345 --license-proxy=http://10.0.61.197:8888'
+					}
+			}
+		}
     }
 }

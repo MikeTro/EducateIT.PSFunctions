@@ -2,11 +2,13 @@
 # LicenseFunctions.ps1
 # ===========================================================================
 # (c)2026 by EducateIT GmbH. http://educateit.ch/ info@educateit.ch
-# Version 1.0
+# Version 1.1
 #
 # Useful Script functions
 # History:
-#   V1.00 -19.08.2026 - M.Trojahn - Initial creation, add Register-EitLicense
+#   V1.0 -19.08.2026 - M.Trojahn - Initial creation, add Register-EitLicense
+#   V1.1 -19.08.2026 - M.Trojahn - Add Optimization for  for EducateIT Raptor V4.48.0 - License System & ProxyServer parameter
+#								   in Register-EitLicense
 #	
 # ===========================================================================
 
@@ -46,6 +48,21 @@ function Register-EitLicense
 
         .PARAMETER License
             Specifies the license used to activate the application.
+			
+		
+		.PARAMETER ProxyServer
+			Optional HTTP proxy server used for license activation or reactivation.
+
+			Format:
+				http://proxyserver:proxyport
+
+			Example:
+				http://192.168.1.10:8888
+
+			The proxy is passed to the application using:
+				--license-proxy=<ProxyServer>
+
+			If omitted, no license proxy argument is passed.
 
         .EXAMPLE
             Register-EitLicense `
@@ -58,12 +75,25 @@ function Register-EitLicense
                 -Application "C:\Program Files\EducateIT\ActionsServer\ActionsServer.exe" `
                 -Reactivate
 
+		.EXAMPLE
+			Register-EitLicense -Application 'C:\Raptor\Raptor.exe' -Reactivate -ProxyServer 'http://192.168.1.10:8888'
+			Reactivates the license using the specified HTTP proxy.
+
+		.EXAMPLE
+			Register-EitLicense -Application 'C:\Raptor\Raptor.exe' -Activate -License 'ABCDE-12345' -ProxyServer 'http://192.168.1.10:8888'
+			Activates the license using the specified HTTP proxy.
+	
+
         .OUTPUTS
             PSCustomObject
 
         .NOTES
-            Copyright: (c)2026 by EducateIT GmbH
-            Version  : 1.0
+            Copyright	: (c)2026 by EducateIT GmbH
+            Version		: 1.01
+			History		:
+			   V1.00 -19.08.2026 - M.Trojahn - Initial creation
+			   V1.01 -20.10.2026 - M.Trojahn - Optimization for  for EducateIT Raptor V4.48.0 - License System
+											   Add ProxyServer parameter
 
             Compatibility:
                 Windows PowerShell 5.1 or later.
@@ -92,7 +122,40 @@ function Register-EitLicense
             ParameterSetName = 'Activate'
         )]
         [ValidateNotNullOrEmpty()]
-        [string]$License
+        [string]$License,
+		
+		[Parameter(Mandatory = $false)]
+		[ValidateNotNullOrEmpty()]
+		[ValidateScript(
+			{
+				$uri = $null
+
+				if (-not [System.Uri]::TryCreate($_, [System.UriKind]::Absolute, [ref]$uri))
+				{
+					throw 'ProxyServer must be a valid absolute URL.'
+				}
+
+				if ($uri.Scheme -ne 'http')
+				{
+					throw 'ProxyServer must use the http:// scheme.'
+				}
+
+				if ([string]::IsNullOrWhiteSpace($uri.Host) -or
+					$uri.Port -le 0 -or
+					$uri.Port -gt 65535)
+				{
+					throw 'ProxyServer must contain a valid host and port.'
+				}
+
+				if ($_ -notmatch '^http://(?:\[[0-9a-fA-F:.]+\]|[^/:?#\s]+):[0-9]{1,5}$')
+				{
+					throw 'ProxyServer must use the format http://proxyserver:proxyport.'
+				}
+
+				return $true
+			}
+		)]
+		[string]$ProxyServer
     )
 
     $success = $false
@@ -115,30 +178,43 @@ function Register-EitLicense
         }
 
         switch ($PSCmdlet.ParameterSetName)
-        {
-            'Activate'
-            {
-                $mode = 'Activate'
-                $argumentList = "--license-activate=$License"
-                $successMessage = 'Successfully activated application.'
-            }
+		{
+			'Activate'
+			{
+				$mode = 'Activate'
+				$argumentList = @("--license-activate=$License")
+				$successMessage = 'Successfully activated application.'
+			}
 
-            'Reactivate'
-            {
-                $mode = 'Reactivate'
-                $argumentList = '--license-reactivate'
-                $successMessage = 'Successfully reactivated application.'
-            }
+			'Reactivate'
+			{
+				$mode = 'Reactivate'
+				$argumentList = @('--license-reactivate')
+				$successMessage = 'Successfully reactivated application.'
+			}
 
-            default
-            {
-                throw "Unsupported parameter set '$($PSCmdlet.ParameterSetName)'."
-            }
-        }
+			default
+			{
+				throw "Unsupported parameter set '$($PSCmdlet.ParameterSetName)'."
+			}
+		}
+
+		if (-not [string]::IsNullOrWhiteSpace($ProxyServer))
+		{
+			$argumentList += "--license-proxy=$ProxyServer"
+		}
+        
 
         $tmpStandardOutput = New-TemporaryFile -ErrorAction Stop
         $tmpStandardError = New-TemporaryFile -ErrorAction Stop
-        $process = Start-Process -FilePath $Application -ArgumentList $argumentList -Wait -PassThru -RedirectStandardOutput $tmpStandardOutput.FullName -RedirectStandardError $tmpStandardError.FullName -ErrorAction Stop
+        $process = Start-Process `
+			-FilePath $Application `
+			-ArgumentList ($argumentList -join ' ') `
+			-Wait `
+			-PassThru `
+			-RedirectStandardOutput $tmpStandardOutput.FullName `
+			-RedirectStandardError $tmpStandardError.FullName `
+			-ErrorAction Stop
         $exitCode = $process.ExitCode
 
         if (
@@ -156,16 +232,24 @@ function Register-EitLicense
         }
 
         if ($exitCode -ne 0)
-        {
-            if ([string]::IsNullOrWhiteSpace($standardError))
-            {
-                throw "Error occurred while registering '$Application'. Exit code: $exitCode."
-            }
-            else
-            {
-                throw "Error occurred while registering '$Application'. Exit code: $exitCode.`r`n$standardError"
-            }
-        }
+		{
+			$errorDetails = @(
+				$standardError
+				$standardOutput
+			) | Where-Object `
+			{
+				-not [string]::IsNullOrWhiteSpace($_)
+			}
+
+			$errorMessage = "Error occurred while registering '$Application'. Exit code: $exitCode."
+
+			if ($errorDetails)
+			{
+				$errorMessage += "`r`n" + ($errorDetails -join "`r`n")
+			}
+
+			throw $errorMessage
+		}
 
         $success = $true
         $statusMessage = $successMessage
