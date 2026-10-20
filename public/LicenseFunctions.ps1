@@ -8,7 +8,7 @@
 # History:
 #   V1.0 -19.08.2026 - M.Trojahn - Initial creation, add Register-EitLicense
 #   V1.1 -19.08.2026 - M.Trojahn - Add Optimization for  for EducateIT Raptor V4.48.0 - License System & ProxyServer parameter
-#								   in Register-EitLicense
+#								   in Register-EitLicense, replace New-TemporaryFile for PS7 Compatibility
 #	
 # ===========================================================================
 
@@ -204,9 +204,9 @@ function Register-EitLicense
 			$argumentList += "--license-proxy=$ProxyServer"
 		}
         
-
-        $tmpStandardOutput = New-TemporaryFile -ErrorAction Stop
-        $tmpStandardError = New-TemporaryFile -ErrorAction Stop
+		$tmpStandardOutput = Get-Item ([System.IO.Path]::GetTempFilename())
+		$tmpStandardError = Get-Item ([System.IO.Path]::GetTempFilename())
+		
         $process = Start-Process `
 			-FilePath $Application `
 			-ArgumentList ($argumentList -join ' ') `
